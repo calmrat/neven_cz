@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="Windows-1250"?>
+<dat:dataPack xmlns:dat="http://www.stormware.cz/schema/version_2/data.xsd" xmlns:inv="http://www.stormware.cz/schema/version_2/invoice.xsd" xmlns:typ="http://www.stormware.cz/schema/version_2/type.xsd" id="FAprij001" ico="29318513" application="StwTest" version="2.0" note="Import FA">
+  <dat:dataPackItem id="E202500072" version="2.0">
+    <inv:invoice version="2.0">
+      <inv:invoiceHeader>
+        <inv:number>
+          <typ:numberRequested>E202500072</typ:numberRequested>
+        </inv:number>
+        <inv:invoiceType>issuedInvoice</inv:invoiceType>
+        <inv:symVar>47608</inv:symVar>
+        <inv:symConst>0308</inv:symConst>
+        <inv:symPar>47608</inv:symPar>
+        <inv:date>2025-01-06</inv:date>
+        <inv:dateTax>2025-01-06</inv:dateTax>
+        <inv:dateAccounting>2025-01-06</inv:dateAccounting>
+        <inv:dateDue>2025-01-21</inv:dateDue>
+        <inv:numberOrder>47608</inv:numberOrder>
+        <inv:accounting>
+          <typ:ids/>
+        </inv:accounting>
+        <inv:classificationVAT>
+          <typ:ids>21</typ:ids>
+        </inv:classificationVAT>
+        <inv:classificationKVDPH>
+          <typ:ids/>
+        </inv:classificationKVDPH>
+        <inv:paymentType>
+          <typ:paymentType>cash</typ:paymentType>
+        </inv:paymentType>
+        <inv:text><![CDATA[Fakturujeme Vám služby]]></inv:text>
+        <inv:partnerIdentity>
+          <typ:address>
+            <typ:company><![CDATA[GENERAL BYTES s.r.o.]]></typ:company>
+            <typ:city><![CDATA[Praha 7]]></typ:city>
+            <typ:street><![CDATA[U Pergamenky 1522/2]]></typ:street>
+            <typ:zip>17000</typ:zip>
+            <typ:ico>02120542</typ:ico>
+            <typ:dic>CZ02120542</typ:dic>
+            <typ:icDph>CZ02120542</typ:icDph>
+          </typ:address>
+          <typ:shipToAddress>
+            <typ:company><![CDATA[GENERAL BYTES s.r.o.]]></typ:company>
+            <typ:city><![CDATA[Praha 7]]></typ:city>
+            <typ:street><![CDATA[U Pergamenky 1522/2]]></typ:street>
+            <typ:zip>17000</typ:zip>
+          </typ:shipToAddress>
+        </inv:partnerIdentity>
+        <inv:dateOrder>2025-01-06</inv:dateOrder>
+        <inv:note><![CDATA[]]></inv:note>
+        <inv:intNote><![CDATA[]]></inv:intNote>
+      </inv:invoiceHeader>
+      <inv:invoiceDetail>
+        <inv:invoiceItem>
+          <inv:text><![CDATA[R321 USB 13,56 MHz ISO15693 14443 čtečka]]></inv:text>
+          <inv:note><![CDATA[]]></inv:note>
+          <inv:quantity>1.0000</inv:quantity>
+          <inv:payVAT>true</inv:payVAT>
+          <inv:rateVAT>high</inv:rateVAT>
+          <inv:homeCurrency>
+            <typ:unitPrice>1830</typ:unitPrice>
+          </inv:homeCurrency>
+        </inv:invoiceItem>
+        <inv:invoiceItem>
+          <inv:text><![CDATA[Způsob platby: Dobirka - Zásilkovna, kurýr DPD]]></inv:text>
+          <inv:note><![CDATA[]]></inv:note>
+          <inv:quantity>1.0000</inv:quantity>
+          <inv:payVAT>true</inv:payVAT>
+          <inv:rateVAT>high</inv:rateVAT>
+          <inv:homeCurrency>
+            <typ:unitPrice>25</typ:unitPrice>
+          </inv:homeCurrency>
+        </inv:invoiceItem>
+        <inv:invoiceItem>
+          <inv:text><![CDATA[Způsob dopravy: Kurýrní služba Zásilkovna]]></inv:text>
+          <inv:note><![CDATA[]]></inv:note>
+          <inv:quantity>1.0000</inv:quantity>
+          <inv:payVAT>true</inv:payVAT>
+          <inv:rateVAT>high</inv:rateVAT>
+          <inv:homeCurrency>
+            <typ:unitPrice>155</typ:unitPrice>
+          </inv:homeCurrency>
+        </inv:invoiceItem>
+      </inv:invoiceDetail>
+    </inv:invoice>
+  </dat:dataPackItem>
+</dat:dataPack>
