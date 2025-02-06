@@ -1,0 +1,15 @@
+
+version: "3.9"
+
+services:
+  upgatescz:
+    build: .
+    container_name: upgatescz_api
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./upgatescz_api/data/cache:/app/upgatescz_api/data/cache
+      - ./logs:/app/logs
+    restart: always

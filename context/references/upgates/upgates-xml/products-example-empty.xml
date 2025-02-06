@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Popis XML - https://www.upgates.cz/a/dokumentace-xml-produktu -->
+<!-- XSD - https://files.upgates.com/schema/products.xsd -->
+<PRODUCTS version="1.0">
+	<PRODUCT last_update_time="">
+
+		<CODE> </CODE>
+		<PRODUCT_ID> </PRODUCT_ID>
+		<ACTIVE_YN> </ACTIVE_YN>
+		<ARCHIVED_YN> </ARCHIVED_YN>
+		<REPLACEMENT_PRODUCT_CODE> </REPLACEMENT_PRODUCT_CODE>
+		<CAN_ADD_TO_BASKET_YN> </CAN_ADD_TO_BASKET_YN>
+
+		<!-- Štítky -->
+		<NEW_YN> </NEW_YN>
+		<NEW_FROM> </NEW_FROM>
+		<NEW_TO> </NEW_TO>
+		<SPECIAL_YN> </SPECIAL_YN>
+		<SPECIAL_FROM> </SPECIAL_FROM>
+		<SPECIAL_TO> </SPECIAL_TO>
+		<SELLOUT_YN> </SELLOUT_YN>
+		<SELLOUT_FROM> </SELLOUT_FROM>
+		<SELLOUT_TO> </SELLOUT_TO>
+		<LABELS>
+			<LABEL>
+				<NAME> </NAME>
+				<ACTIVE_YN> </ACTIVE_YN>
+				<ACTIVE_FROM> </ACTIVE_FROM>
+				<ACTIVE_TO> </ACTIVE_TO>
+			</LABEL>
+		</LABELS>
+
+		<!-- Texty -->
+		<DESCRIPTIONS>
+			<DESCRIPTION language="">
+				<ACTIVE_YN> </ACTIVE_YN>
+				<TITLE> </TITLE>
+				<URL> </URL>
+				<SHORT_DESCRIPTION> </SHORT_DESCRIPTION>
+				<LONG_DESCRIPTION> </LONG_DESCRIPTION>
+			</DESCRIPTION>
+		</DESCRIPTIONS>
+
+		<!-- SEO -->
+		<SEO_OPTIMALIZATION>
+			<SEO language="">
+				<SEO_URL> </SEO_URL>
+				<SEO_TITLE> </SEO_TITLE>
+				<SEO_META_DESCRIPTION> </SEO_META_DESCRIPTION>
+			</SEO>
+		</SEO_OPTIMALIZATION>
+
+		<!-- Výrobce -->
+		<MANUFACTURER> </MANUFACTURER>
+		<MANUFACTURER_IMAGE_URL> </MANUFACTURER_IMAGE_URL>
+		<MANUFACTURER_DESCRIPTIONS>
+			<DESCRIPTION language=""> </DESCRIPTION>
+		</MANUFACTURER_DESCRIPTIONS>
+
+		<SUPPLIER_CODE> </SUPPLIER_CODE>
+		<EAN> </EAN>
+		<AVAILABILITY> </AVAILABILITY>
+		<STOCK> </STOCK>
+		<WEIGHT> </WEIGHT>
+		<UNIT> </UNIT>
+		<SHIPMENT_GROUP> </SHIPMENT_GROUP>
+
+		<!-- DPH -->
+		<VATS>
+			<VAT country=""> </VAT>
+		</VATS>
+
+		<!-- Množství -->
+		<LENGTH>
+			<ACTIVE_YN> </ACTIVE_YN>
+			<LABELS>
+				<LABEL language=""> </LABEL>
+			</LABELS>
+			<STEPS_TYPE> </STEPS_TYPE>
+			<STEPS> </STEPS>
+			<LENGTH_FROM> </LENGTH_FROM>
+			<LENGTH_TO> </LENGTH_TO>
+			<UNIT> </UNIT>
+			<NOTES>
+				<NOTE language=""> </NOTE>
+			</NOTES>
+		</LENGTH>
+
+		<PRIVATE_YN> </PRIVATE_YN>
+		<PRIVATE_CUSTOMERS_ONLY_YN> </PRIVATE_CUSTOMERS_ONLY_YN>
+		<GROUPS>
+			<GROUP> </GROUP>
+		</GROUPS>
+
+		<!-- Kategorie -->
+		<CATEGORIES>
+			<CATEGORY>
+				<CODE> </CODE>
+				<NAME> </NAME>
+				<PARENT_CODE> </PARENT_CODE>
+				<PRIMARY_YN> </PRIMARY_YN>
+				<POSITION> </POSITION>
+			</CATEGORY>
+		</CATEGORIES>
+
+		<!-- Cenové vzorce -->
+		<PRICES_FORMULAS>
+			<NAME> </NAME>
+		</PRICES_FORMULAS>
+
+		<!-- Ceny produktu -->
+		<PRICES>
+			<PRICE language="">
+				<PRICELISTS>
+					<PRICELIST>
+						<NAME> </NAME>
+						<PRICE_ORIGINAL> </PRICE_ORIGINAL>
+						<PRODUCT_DISCOUNT> </PRODUCT_DISCOUNT>
+						<PRODUCT_DISCOUNT_REAL> </PRODUCT_DISCOUNT_REAL>
+						<PRICE_SALE> </PRICE_SALE>
+						<PRICE_WITH_VAT> </PRICE_WITH_VAT>
+						<PRICE_WITHOUT_VAT> </PRICE_WITHOUT_VAT>
+					</PRICELIST>
+				</PRICELISTS>
+				<PRICE_PURCHASE> </PRICE_PURCHASE>
+				<PRICE_COMMON> </PRICE_COMMON>
+				<CURRENCY> </CURRENCY>
+			</PRICE>
+		</PRICES>
+
+		<!-- Obrázky -->
+		<IMAGES>
+			<IMAGE>
+				<URL> </URL>
+				<TITLES>
+					<TITLE language=""> </TITLE>
+				</TITLES>
+				<MAIN_YN> </MAIN_YN>
+				<LIST_YN> </LIST_YN>
+				<POSITION> </POSITION>
+			</IMAGE>
+		</IMAGES>
+
+		<!-- Soubory -->
+		<FILES>
+			<FILE>
+				<URL> </URL>
+				<TITLES>
+					<TITLE language=""> </TITLE>
+				</TITLES>
+				<POSITION> </POSITION>
+			</FILE>
+		</FILES>
+
+		<!-- Benefity -->
+		<BENEFITS>
+			<BENEFIT>
+				<NAME> </NAME>
+			</BENEFIT>
+		</BENEFITS>
+
+		<!-- Parametry -->
+		<PARAMETERS>
+			<PARAMETER>
+				<NAME> </NAME>
+				<VALUE> </VALUE>
+				<IMAGE_URL> </IMAGE_URL>
+			</PARAMETER>
+		</PARAMETERS>
+
+		<!-- Konfigurace -->
+		<CONFIGURATIONS>
+			<CONFIGURATION type="">
+				<NAME> </NAME>
+				<VALUE>
+					<NAME> </NAME>
+					<IMAGE_URL> </IMAGE_URL>
+					<DEFAULT_YN> </DEFAULT_YN>
+					<PRICE language="" operation=""> </PRICE>
+				</VALUE>
+			</CONFIGURATION>
+		</CONFIGURATIONS>
+
+		<!-- Varianty -->
+		<VARIANTS>
+			<VARIANT>
+
+				<CODE> </CODE>
+				<VARIANT_ID> </VARIANT_ID>
+
+				<MAIN_YN> </MAIN_YN>
+				<ACTIVE_YN> </ACTIVE_YN>
+				<CAN_ADD_TO_BASKET_YN> </CAN_ADD_TO_BASKET_YN>
+
+				<!-- Štítky variant -->
+				<NEW_YN> </NEW_YN>
+				<NEW_FROM> </NEW_FROM>
+				<NEW_TO> </NEW_TO>
+				<SPECIAL_YN> </SPECIAL_YN>
+				<SPECIAL_FROM> </SPECIAL_FROM>
+				<SPECIAL_TO> </SPECIAL_TO>
+				<SELLOUT_YN> </SELLOUT_YN>
+				<SELLOUT_FROM> </SELLOUT_FROM>
+				<SELLOUT_TO> </SELLOUT_TO>
+				<LABELS>
+					<LABEL>
+						<NAME> </NAME>
+						<ACTIVE_YN> </ACTIVE_YN>
+						<ACTIVE_FROM> </ACTIVE_FROM>
+						<ACTIVE_TO> </ACTIVE_TO>
+					</LABEL>
+				</LABELS>
+
+				<SUPPLIER_CODE> </SUPPLIER_CODE>
+				<EAN> </EAN>
+				<AVAILABILITY_NOTES>
+					<AVAILABILITY_NOTE language=""> </AVAILABILITY_NOTE>
+				</AVAILABILITY_NOTES>
+				<AVAILABILITY> </AVAILABILITY>
+				<STOCK> </STOCK>
+				<WEIGHT> </WEIGHT>
+				<IMAGE_URL> </IMAGE_URL>
+
+				<!-- Parametry variant -->
+				<PARAMETERS>
+					<PARAMETER>
+						<NAME> </NAME>
+						<VALUE> </VALUE>
+						<IMAGE_URL> </IMAGE_URL>
+					</PARAMETER>
+				</PARAMETERS>
+
+				<!-- Ceny variant -->
+				<PRICES>
+					<PRICE language="">
+						<PRICELISTS>
+							<PRICELIST>
+								<NAME> </NAME>
+								<PRICE_ORIGINAL> </PRICE_ORIGINAL>
+								<PRODUCT_DISCOUNT> </PRODUCT_DISCOUNT>
+								<PRODUCT_DISCOUNT_REAL> </PRODUCT_DISCOUNT_REAL>
+								<PRICE_SALE> </PRICE_SALE>
+								<PRICE_WITH_VAT> </PRICE_WITH_VAT>
+								<PRICE_WITHOUT_VAT> </PRICE_WITHOUT_VAT>
+							</PRICELIST>
+						</PRICELISTS>
+						<PRICE_PURCHASE> </PRICE_PURCHASE>
+						<PRICE_COMMON> </PRICE_COMMON>
+						<CURRENCY> </CURRENCY>
+					</PRICE>
+				</PRICES>
+
+				<!-- Vlastní pole variant -->
+				<METAS>
+					<META type="">
+						<META_KEY> </META_KEY>
+						<META_VALUE> </META_VALUE>
+						<META_VALUES>
+							<META_VALUE language=""> </META_VALUE>
+						</META_VALUES>
+					</META>
+				</METAS>
+
+			</VARIANT>
+		</VARIANTS>
+
+		<!-- Související produkty -->
+		<RELATED_PRODUCTS>
+			<CODE> </CODE>
+		</RELATED_PRODUCTS>
+
+		<!-- Alternativní produkty -->
+		<ALTERNATIVE_PRODUCTS>
+			<CODE> </CODE>
+		</ALTERNATIVE_PRODUCTS>
+
+		<!-- Příslušenství -->
+		<ACCESSORIES>
+			<CODE> </CODE>
+		</ACCESSORIES>
+
+		<!-- Dárky -->
+		<GIFTS>
+			<CODE> </CODE>
+		</GIFTS>
+
+		<!-- Sady -->
+		<SETS>
+			<CODE> </CODE>
+		</SETS>
+
+		<!-- Vlastní pole -->
+		<METAS>
+			<META type="">
+				<META_KEY> </META_KEY>
+				<META_VALUE> </META_VALUE>
+				<META_VALUES>
+					<META_VALUE language=""> </META_VALUE>
+				</META_VALUES>
+			</META>
+		</METAS>
+
+	</PRODUCT>
+</PRODUCTS>

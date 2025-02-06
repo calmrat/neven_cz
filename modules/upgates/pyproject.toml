@@ -1,0 +1,23 @@
+[project]
+name = "upgatescz_api"
+version = "2.7.3"
+dependencies = [
+    "flask",
+    "aiohttp",
+    "schedule",
+    "click",
+    "pydantic",
+    "logfire",
+    "duckdb",
+    "toml"
+]
+
+[tool.uv]
+index-url = "https://pypi.org/simple"
+
+
+[tool.logfire]
+project_name = "neven-agents"
+console_colors = "never"
+console_min_log_level = "debug"
+console_include_timestamp = false
