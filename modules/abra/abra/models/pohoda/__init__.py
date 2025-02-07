@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+from datetime import datetime
+
 class PaymentType(BaseModel):
-    name: str
+    paymentType: str
 
 class Address(BaseModel):
     company: str
@@ -11,6 +13,7 @@ class Address(BaseModel):
     zip: str
     ico: Optional[str] = None
     dic: Optional[str] = None
+    icDph: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     www: Optional[str] = None
@@ -18,30 +21,42 @@ class Address(BaseModel):
 
 class Identity(BaseModel):
     address: Address
+    shipToAddress: Optional[Address] = None
 
 class InvoiceHeader(BaseModel):
     invoiceType: str
     number: str
     numberOrder: str
     symVar: str
-    date: str
-    dateTax: str
-    dateDue: str
+    symConst: Optional[str] = None
+    symPar: Optional[str] = None
+    date: datetime
+    dateTax: datetime
+    dateAccounting: Optional[datetime] = None
+    dateDue: datetime
+    accounting: Optional[str] = None
+    classificationVAT: Optional[str] = None
+    classificationKVDPH: Optional[str] = None
     paymentType: PaymentType
+    text: Optional[str] = None
     myIdentity: Identity
     partnerIdentity: Identity
+    dateOrder: Optional[datetime] = None
+    note: Optional[str] = None
+    intNote: Optional[str] = None
 
 class HomeCurrency(BaseModel):
     unitPrice: float
 
 class StockItem(BaseModel):
-    ids: str
+    ids: Optional[str] = None
 
 class InvoiceItem(BaseModel):
     text: str
+    note: Optional[str] = None
     code: Optional[str] = None
-    quantity: int
-    unit: str
+    quantity: float
+    unit: Optional[str] = None
     payVAT: bool
     rateVAT: str
     homeCurrency: HomeCurrency
@@ -57,7 +72,7 @@ class InvoiceSummaryCurrency(BaseModel):
     priceNone: float
 
 class InvoiceSummary(BaseModel):
-    roundingDocument: str
+    roundingDocument: Optional[str] = None
     homeCurrency: InvoiceSummaryCurrency
 
 class Invoice(BaseModel):
@@ -65,3 +80,6 @@ class Invoice(BaseModel):
     invoiceHeader: InvoiceHeader
     invoiceDetail: InvoiceDetail
     invoiceSummary: InvoiceSummary
+
+class Invoices(BaseModel):
+    invoices: List[Invoice]
