@@ -23,7 +23,7 @@ load_dotenv()
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 if str(os.getenv("DEBUG")).lower() in ("1", "true"):
     logger.setLevel(logging.DEBUG)

@@ -41,7 +41,7 @@ from abra.handlers import InvoiceHandler
 
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 # Configure Rich Console output
 console = Console()

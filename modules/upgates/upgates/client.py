@@ -15,9 +15,9 @@ Usage:
 File: upgates/client.py
 """
 
-import os
 import aiohttp
 import asyncio
+from flask.cli import F
 import logfire
 
 from typing import List, Dict
@@ -25,9 +25,6 @@ from typing import List, Dict
 from upgates import config
 from upgates.db.duckdb_api import UpgatesDuckDBAPI
 from upgates.ai import translate_text, TranslationDeps
-
-# Set retry attempts from config (default: 1)
-RETRY_ATTEMPTS = config.upgates_api_retry_limit
 
 
 def log_sync_statistics(sync_results: Dict[str, List]) -> None:
@@ -286,8 +283,13 @@ class UpgatesClient:
         logfire.info(f"✅ All pages fetched. Total items: {len(all_data)}")
         return {endpoint: all_data}
     
-    async def translate_product(self, product_code: str, target_lang: str):
+    async def translate_product(self, product_code: str, target_lang: str, prompt: str):
+        target_lang = target_lang.upper()
+        
+        # Add on additional details about the language; e.g., "cs" for Czech
+
         logfire.info(f"Starting translation for product '{product_code}' to '{target_lang}'")
+        logfire.info(f"Prompt Injected: {prompt}")
 
         # Retrieve the product details from DuckDB (assumes a DataFrame is returned)
         product_details = await self.db_api.get_product_details(product_code)
@@ -306,9 +308,9 @@ class UpgatesClient:
                 break
 
         if not cz_desc:
-            logfire.error("No Czech description available for product.")
-            import pdb; pdb.set_trace()
-            return
+            msg = "No Czech description available for product."
+            #logfire.error(msg)
+            raise ValueError(msg)
 
         source_title = cz_desc.get("title", "").strip()
         source_long = cz_desc.get("long_description", "").strip()
@@ -317,22 +319,24 @@ class UpgatesClient:
             logfire.error("Missing title or long description in Czech version.")
             return
 
-        # Build the system prompt for the AI translator.
-        prompt = (
+        # Build the user prompt for the AI translator.
+        user_prompt = (
             f"Translate the following product details from Czech to {target_lang}.\n\n"
             "Long Description:\n" 
-            " * clean, well formatted HTML (p, span, h1, h2, h3, b, i, em, strong, img, table).\n"
+            " * clean, well formatted HTML : p, span, h2, h2, h3, h4, h5, h6, b, i, em, strong, img, table, ul.li .\n"
             " * img - Set max width to 600px, if larger. Remove image height, if specified.\n"
-            " * add (translated) noted 'This product description was generated with the help of AI.'\n\n"
-            f"Product code: {product_code}.\n\n"
-            f"Title: {source_title}.\n\n"
-            f"Long Description: {source_long}.\n\n"
+            " * add noted '<br/><h6>This product description was translated with the help of AI.</h6>'\n\n"
+            f"Product code: {product_code}\n\n"
+            f"Title: {source_title}\n\n"
+            f"Long Description: {source_long}"
         )
+        if prompt:
+            user_prompt += f"\n\nAdditionally, {prompt}"
 
         # Call the AI translation function using pydantic AI run()
         try:
             deps = TranslationDeps()
-            ai_result = await translate_text(prompt, deps=deps)
+            ai_result = await translate_text(user_prompt, deps=deps)
         except Exception as e:
             logfire.error(f"AI translation failed: {e}")
             return
@@ -380,7 +384,7 @@ class UpgatesClient:
                         {
                             "language": translations.get("language"),
                             "active_yn": True,  # optional, default is TRUE
-                            "title": translations.get("seo_title") or translations.get("title"),
+                            "title": translations.get("title") or translations.get("seo_title"),
                             "short_description": translations.get("short_description"),
                             "long_description": translations.get("long_description"),
                             "seo_description": translations.get("seo_description"),
@@ -389,12 +393,9 @@ class UpgatesClient:
                             "seo_url": translations.get("seo_url"),  # optional if needed
                         }
                     ]
-                    # add more fields as needed by the API
                 }
             ]
         }
-
-        import ipdb; ipdb.set_trace()
 
         try:
             async with aiohttp.ClientSession() as session:

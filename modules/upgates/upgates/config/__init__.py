@@ -11,12 +11,13 @@ File:
     abra/config/__init__.py
 """
 
-import logging
 import os
+import logging
 
 import logfire
 
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Define helper functions
@@ -36,21 +37,22 @@ def init_dirs(paths) -> int:
     return 1 # success
 
 
-# Begin Main Execution Path
-
 # Load environment variables
 load_dotenv()
 
-# Logfire
-logfire_level = os.getenv("LOGFIRE_LEVEL", "info").lower()
+# Python Logging
+logging_enabled = os.getenv("LOGGING_ENABLED", "").lower() in ("1", "true") or False
+logging_level = os.getenv("LOGGING_LEVEL", "").lower() or 'info'
+debug = logging_level # alias
+logging_level = logging.DEBUG if logging_level == 'debug' else logging.INFO
+
+# Logfire Logging
+logfire_enabled = os.getenv("LOGFIRE_ENABLED", "").lower() in ("1", "true") or True
+logfire_consoloe_min_log_level = os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL").lower() or 'info'
 logfire_project = os.getenv("LOGFIRE_PROJECT", "neven-agents")
 
-# Set log level from environment or config file, default to "info"
-#log_level: str = os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL", config.get("logging", {}).get("log_level", "info"))
-logfire.configure()
-
-# Define application configuration settings
-paralell_batch_size = os.getenv("PARALELL_BATCH_SIZE", 1)
+# CLI Settings
+paralell_batch_size = int(os.getenv("PARALELL_BATCH_SIZE", 1))
 
 # Upgates
 upgates_api_url = os.getenv("UPGATES_API_URL", "")
@@ -58,10 +60,10 @@ upgates_login = os.getenv("UPGATES_LOGIN", "")
 upgates_api_key = os.getenv("UPGATES_API_KEY", "")
 upgates_sync_interveral_minutes = os.getenv("UPGATES_SYNC_INTERVAL_MINUTES", 10)
 upgates_api_retry_limit = os.getenv("UPGATES_API_RETRY_LIMIT", 1)
-upgates_verify_ssl = os.getenv("UPGATES_VERIFY_SSL", True)
+upgates_verify_ssl = os.getenv("UPGATES_VERIFY_SSL", "").lower() in ("1", "true") or True
 
 # Open AI
-openai_enabled = os.getenv("OPENAI_ENABLED", True)
+openai_enabled = os.getenv("OPENAI_ENABLED", "").lower() in ("1", "true") or True
 openai_api_key = os.getenv("OPENAI_API_KEY", "")
 openai_default_model = os.getenv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini")
 openai_default_retries = os.getenv("OPENAI_DEFAULT_RETRIES", 1)
@@ -85,16 +87,38 @@ sys_dirs = [neven_path, data_path, input_path, output_path, logs_path, db_path, 
 # Ensure default data path and subdirectories exist
 init_dirs(sys_dirs)
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger()
+# defaults
+logger = None
+debug_msg = "🟡 Debug mode is enabled."
+info_msg = "🟠 Info mode is enabled."
 
-if str(os.getenv("DEBUG")).lower() in ("1", "true"):
-    logger.setLevel(logging.DEBUG)
-    logger.debug("🟡 Debug mode is enabled.")
-else:
-    logger.setLevel(logging.INFO)
-    logger.info("🟠 Info mode is enabled.")
+if logging_enabled:    
+    # Setup Logging
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logger = logging.getLogger(__name__)
+
+    if debug:    
+        logger.setLevel(logging.DEBUG)
+        logger.debug(f"LOGGING: {debug_msg}")
+    else:
+        logger.info(f"LOGGING: {debug_msg}")
+
+if logfire_enabled:
+    if debug:
+        os.environ["LOGFIRE_CONSOLE_MIN_LOG_LEVEL"] = "debug"
+    else:
+        value = os.environ["LOGFIRE_CONSOLE_MIN_LOG_LEVEL"]
+        os.environ["LOGFIRE_CONSOLE_MIN_LOG_LEVEL"] = "info" if not value else value
+
+    logfire.configure()
+    
+    if debug:
+        logfire.debug(f"LOGFIRE: {info_msg}")
+    else:
+        logfire.info(f"LOGFIRE: {info_msg}")
+
+
+
 
 # Log paths
 logging.debug(f"Default data path: {data_path}")

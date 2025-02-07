@@ -15,6 +15,7 @@ Usage:
 File: /Users/cward/Repos/neven_cz/modules/upgates/upgates/db/duckdb_api.py
 """
 
+from math import log
 import os
 import duckdb
 import logfire
@@ -272,6 +273,8 @@ class UpgatesDuckDBAPI:
         language = language.lower()
         language = 'cz' if language == 'cs' else language
 
+        seo_keywords = ', '.join(seo_keywords) if seo_keywords else ""
+
         self.conn.execute("""
             INSERT INTO descriptions (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -331,6 +334,13 @@ class UpgatesDuckDBAPI:
             VALUES (?, ?, ?)
         """, (product_id, country_code, vat_percentage))
     
+    def get_product_fields(self):
+        """Show all product fields."""
+        query = "PRAGMA table_info(products)"
+        results = self.conn.execute(query).fetchdf()
+        fields = ', '.join(results['name'].tolist())
+        return fields
+
     def get_product_code_by_id(self, product_id: str) -> int:
         """
         Retrieves the product_code for the given product id.
@@ -350,6 +360,7 @@ class UpgatesDuckDBAPI:
         return result[0] if result else None
     
     def get_product_core(self, product_id=None):
+        logfire.debug(f"Fetching product core details for product_id: {product_id}")
         query = """
         SELECT 
             p.product_id, 
@@ -362,7 +373,7 @@ class UpgatesDuckDBAPI:
             p.availability_type AS availability_type, 
             p.unit AS unit
         FROM products p
-        """
+        """.strip()
         parameters = []
         if product_id:
             query += " WHERE p.product_id = ? "
@@ -466,10 +477,34 @@ class UpgatesDuckDBAPI:
         result = self.conn.execute(query, parameters).fetchdf()
         return result
 
+    async def get_all_products(self) -> pd.DataFrame:
+        """Show all products."""
+        logfire.info("Fetching all products.")
+        query = "SELECT product_id FROM products"
+        pids = self.conn.execute(query).fetchall()
+
+        if not pids:
+            logfire.info("No product ids found.")
+            return pd.DataFrame()
+        
+        products = [
+            (self.get_product_core(pid[0]),
+            self.get_product_images(pid[0]),
+            self.get_product_prices(pid[0]),
+            self.get_product_categories(pid[0]),
+            self.get_product_vat(pid[0]),
+            self.get_product_descriptions(pid[0])) 
+        for pid in pids]
+
+        logfire.info(f"Found {len(products)} products.")
+        return products
+
     async def get_product_details(self, code=None, product_id=None) -> pd.DataFrame:
         """Show all products with aggregated details from separate queries."""
-        if code and product_id:
-            raise ValueError("Provide either code or product_id, not both.")
+        logfire.info(f"Fetching product details for code, product_id: {code}, {product_id}")
+
+        if (code and product_id) or (not (code or product_id)):
+            raise ValueError("Provide either code or product_id, never neither nor both.")
         
         if code and not product_id:
             query = "SELECT product_id FROM products WHERE code = ?"
@@ -491,7 +526,6 @@ class UpgatesDuckDBAPI:
         combined['vat'] = vat.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
         combined['descriptions'] = descriptions.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
         return combined
-
 
     def get_customer_details(self) -> pd.DataFrame:
         """Show all customers."""

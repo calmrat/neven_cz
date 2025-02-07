@@ -35,8 +35,8 @@ import subprocess
 
 import duckdb
 import IPython
+import yaml
 
-from pathlib import Path
 
 from rich.console import Console
 
@@ -52,46 +52,33 @@ console = Console()
 # Initialize the Upgates API client
 client = UpgatesClient()
 
-def _clear_cache(db_file: Path = None):
+def _clear_cache() -> int:
     """Clear the DuckDB cache file."""
-    db_file = Path(db_file) or config.default_db_path
-
+    db_file = config.default_db_path
     if os.path.exists(db_file):
         os.remove(db_file)
         console.print("DuckDB cache file cleared.")
+        return 1
     else:
         console.print("Cache file not found, nothing to clear.")
+        return 0
 
+
+# Define the CLI commands
+
+# CLI group
 @click.group()
 def cli():
     """CLI for managing Upgates API sync, translation, and configuration.""" 
     pass
 
-
-
-@click.command()
-@click.argument("product_code")
-@click.argument("target_lang")
-def translate_product(product_code, target_lang):
-    """Translate a product's descriptions from Czech to TARGET_LANG."""
-    asyncio.run(client.translate_product(product_code, target_lang))
-
-@click.command()
-@click.argument("product_code")
-@click.argument("target_lang")
-@click.argument("update")
-def save_translation(product_code, target_lang, update):
-    """Save the updated product translations back to Upgates.cz API."""
-
-    if update:
-        asyncio.run(client.translate_product(product_code, target_lang))
-    asyncio.run(client.save_translation(product_code, target_lang))
-
+# CMD: Start Webhook
 @click.command()
 def start_webhook():
     """Start webhook server for real-time updates.""" 
     subprocess.run(["python", "webhook_server.py"])
 
+# CMD: Start Scheduler
 @click.command()
 def start_scheduler():
     """Start scheduled auto-sync process.""" 
@@ -113,7 +100,7 @@ def sync_products(clear_cache, page_count, embed):
     asyncio.run(client.sync_products(page_count=page_count))
     
     if embed:
-        import ipdb; ipdb.set_trace()
+        IPython.embed()
 
 @click.command()
 @click.option('--clear-cache', is_flag=False, help="Clear the cache before syncing.")
@@ -145,51 +132,102 @@ def sync_all(clear_cache, page_count):
 
 ####
 
-
-
 @click.command()
-@click.argument("product_id")
-@click.argument("lang")
-def translate_product(product_id, lang):
-    """Translate product descriptions for a given language.""" 
-    asyncio.run(client.translate_product(product_id, lang))
+def list_product_fields():
+    """List all available product fields."""
+    fields = client.db_api.get_product_fields()
+    console.print(f"📦 Available product fields ({len(fields)})")
+    console.print(fields)
 
+
+# CMD: Translate Product 
 @click.command()
-def init_config():
-    """Initialize configuration by prompting for missing values.""" 
-    client.init_config()
+@click.argument("product_code")
+@click.argument("target_lang")
+@click.argument("prompt", nargs=-1)
+@click.option("--save", is_flag=True, default=False, help="Save the translation back to Upgates.cz API.")
+@click.option("--update", is_flag=True, default=False, help="Update the product translations before saving.")
+def translate_product(product_code, target_lang, prompt, save, update):
+    """Translate a product's descriptions from Czech to TARGET_LANG."""
+    prompt = " ".join(prompt) if prompt else None
+    asyncio.run(client.translate_product(product_code, target_lang, prompt))
+    search_product.callback(product_code, "json", target_lang, False, list())
+    if save:
+        save_translation.callback(product_code, target_lang, update)
+
+# CMD: Save Translation
+@click.command()
+@click.option("--update", is_flag=True, default=False, help="Update the product translations before saving.")
+@click.argument("product_code")
+@click.argument("target_lang")
+def save_translation(product_code, target_lang, update):
+    """Save the updated product translations back to Upgates.cz API."""
+    if update:
+        asyncio.run(client.translate_product(product_code, target_lang))
+    asyncio.run(client.save_translation(product_code, target_lang))
+
 
 @click.command()
 @click.argument("product_code")
-@click.option("--format", default="json", type=click.Choice(["json", "json", "df", "toml"]), help="Output format: JSON (default), TOML, or DataFrame (df).")
-@click.option("--embed", is_flag=True, default=True, help="Launch ipython.embed() shell after searching for product.")
-def search_product(product_code, format, embed):
+@click.option("--format", default="json", type=click.Choice(["yaml", "json", "df"]), help="Output format: JSON (default), TOML, or DataFrame (df).")
+@click.option("--language", default="cz", help="Language code for the product mutation.")
+@click.option("--embed", is_flag=True, help="Launch ipython.embed() shell after searching for product.")
+@click.argument("fields", nargs=-1)
+def search_product(product_code, format, language, embed, fields):
     """Search for a product by product_code.""" 
     product = asyncio.run(client.db_api.get_product_details(product_code))
+
+    required_fields = set(['product_id', 'code', 'ean', 'descriptions'])
+    fields = set(fields) if fields else required_fields
+    fields |= required_fields
+    fields = list(fields)
+    
+    #import ipdb; ipdb.set_trace()
+
+    if fields:
+        product = product.loc[:, fields]
+
+    if 'descriptions' in fields:
+        product['descriptions'] = product['descriptions'].apply(
+            lambda x: [desc for desc in x if desc['language'] == language])
 
     if product.empty:
         console.print(f"❌ Product '{product_code}' not found.")
         return
 
     if format == "df":
-        if embed:
-            IPython.embed()
-        else:
-            console.print(product.to_string(index=False))
+        msg = product.to_string(index=False)
     elif format == "json":
-        console.print(product.to_json(orient="records", indent=2))
+        msg = product.to_json(orient="records", indent=2)
+    elif format == "csv":
+        raise NotImplementedError("CSV output format not yet implemented.")
+    elif format == "toml":
+        raise NotImplementedError("TOML output format not yet implemented.")
+    elif format == "yaml":
+        msg = yaml.dump(product.to_dict(orient="records"), indent=2)
+    else:
+        msg = product.to_string(index=False)
+
+    console.print(msg)
+    
+    if embed:
+            IPython.embed()
 
 @click.command(name="show-products")
-@click.option("--embed", is_flag=True, default=True, help="Launch ipython.embed() shell after showing products.")
+@click.option("--embed", is_flag=False, default=True, help="Launch ipython.embed() shell after showing products.")
 def show_products(embed):
     """Show all products with related data."""
     # Get all product details (with foreign key relationships)
-    products = client.db_api.get_product_details()
+
+    products = asyncio.run(client.db_api.get_all_products())
     
     if embed:
         IPython.embed()
     
-    console.print(products.to_json(orient="records", indent=2))
+    #console.print(products.to_json(orient="records", indent=2))
+
+
+
 
 @click.command(name="show-customers")
 def show_customers():
@@ -215,6 +253,7 @@ def clear_cache():
     db_file = config.default_db_path
     # Ensure the cache file exists before attempting to remove
     if os.path.exists(db_file):
+        console.print(f"ℹ️ Cache file: {db_file}")
         try:
             os.remove(db_file)
             console.print("✅ Database cache file cleared successfully.")
@@ -229,7 +268,6 @@ cli.add_command(sync_all)
 cli.add_command(sync_products)
 cli.add_command(sync_customers)
 cli.add_command(sync_orders)
-cli.add_command(init_config)
 cli.add_command(search_product)
 cli.add_command(show_products)
 cli.add_command(show_customers)
@@ -239,6 +277,8 @@ cli.add_command(clear_cache)
 # Register the new commands with the CLI group:
 cli.add_command(translate_product)
 cli.add_command(save_translation)
+
+cli.add_command(list_product_fields)
 
 
 if __name__ == "__main__":
