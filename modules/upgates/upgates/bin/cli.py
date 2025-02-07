@@ -14,15 +14,16 @@ Commands:
     sync-products       Sync products data.
     sync-customers      Sync customers data.
     sync-orders         Sync orders data.
-    init-config         Initialize configuration by prompting for missing values.
+    list-product-fields List all available product fields
     search-product      Search for a product by product_code.
     show-products       Show all products with related data.
     show-customers      Show all customers.
     show-orders         Show all orders.
-    clear-cache         Force-clear the DuckDB cache file.
     translate-product   Translate product descriptions for a given language.
     save-translation    Save the updated product translations back to Upgates.cz API.
-
+    clear-cache         Force-clear the DuckDB cache file.
+    
+    
 File:
     $> upgates --help
 """
@@ -49,15 +50,12 @@ from upgates import config
 # Configure Rich Console output
 console = Console()
 
-# Initialize the Upgates API client
-client = UpgatesClient()
-
 def _clear_cache() -> int:
     """Clear the DuckDB cache file."""
     db_file = config.default_db_path
     if os.path.exists(db_file):
         os.remove(db_file)
-        console.print("DuckDB cache file cleared.")
+        console.print(f"DuckDB cache file cleared: {db_file}")
         return 1
     else:
         console.print("Cache file not found, nothing to clear.")
@@ -89,7 +87,7 @@ def start_scheduler():
 
 
 @click.command()
-@click.option('--clear-cache', is_flag=False, help="Clear the cache before syncing.")
+@click.option('--clear-cache', is_flag=True, help="Clear the cache before syncing.")
 @click.option('--page-count', default=None, type=int, help="Number of pages to fetch. Default is all pages.")
 @click.option('--embed', is_flag=True, help="Launch ipython.embed() shell after syncing.")
 def sync_products(clear_cache, page_count, embed):
@@ -97,36 +95,38 @@ def sync_products(clear_cache, page_count, embed):
     
     if clear_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
+        
+    client = UpgatesClient()
     asyncio.run(client.sync_products(page_count=page_count))
     
     if embed:
         IPython.embed()
 
 @click.command()
-@click.option('--clear-cache', is_flag=False, help="Clear the cache before syncing.")
+@click.option('--clear-cache', is_flag=True, help="Clear the cache before syncing.")
 @click.option('--page-count', default=None, type=int, help="Number of pages to fetch. Default is all pages.")
 def sync_customers(clear_cache, page_count):
     """Sync customers data."""
     if clear_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
+    client = UpgatesClient()
     asyncio.run(client.sync_customers(page_count=page_count))
 
 @click.command()
-@click.option('--clear-cache', is_flag=False, help="Clear the cache before syncing.")
+@click.option('--clear-cache', is_flag=True, help="Clear the cache before syncing.")
 @click.option('--page-count', default=None, type=int, help="Number of pages to fetch. Default is all pages.")
 def sync_orders(clear_cache, page_count):
     """Sync orders data."""
     if clear_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
+    client = UpgatesClient()
     asyncio.run(client.sync_orders(page_count=page_count))
 
 @click.command()
-@click.option('--clear-cache', is_flag=False, help="Clear the cache before syncing.")
 @click.option('--page-count', default=None, type=int, help="Number of pages to fetch. Default is all pages.")
-def sync_all(clear_cache, page_count):
+def sync_all(page_count):
     """Sync all data: products, customers, orders."""
-    if clear_cache:
-        _clear_cache()  # Ensure clear_cache is called if the flag is set
+    client = UpgatesClient()
     asyncio.run(client.sync_all(page_count=page_count))
 
 
@@ -135,6 +135,7 @@ def sync_all(clear_cache, page_count):
 @click.command()
 def list_product_fields():
     """List all available product fields."""
+    client = UpgatesClient()
     fields = client.db_api.get_product_fields()
     console.print(f"📦 Available product fields ({len(fields)})")
     console.print(fields)
@@ -150,6 +151,7 @@ def list_product_fields():
 def translate_product(product_code, target_lang, prompt, save, update):
     """Translate a product's descriptions from Czech to TARGET_LANG."""
     prompt = " ".join(prompt) if prompt else None
+    client = UpgatesClient()
     asyncio.run(client.translate_product(product_code, target_lang, prompt))
     search_product.callback(product_code, "json", target_lang, False, list())
     if save:
@@ -162,6 +164,7 @@ def translate_product(product_code, target_lang, prompt, save, update):
 @click.argument("target_lang")
 def save_translation(product_code, target_lang, update):
     """Save the updated product translations back to Upgates.cz API."""
+    client = UpgatesClient()
     if update:
         asyncio.run(client.translate_product(product_code, target_lang))
     asyncio.run(client.save_translation(product_code, target_lang))
@@ -175,8 +178,16 @@ def save_translation(product_code, target_lang, update):
 @click.argument("fields", nargs=-1)
 def search_product(product_code, format, language, embed, fields):
     """Search for a product by product_code.""" 
+    client = UpgatesClient()
     product = asyncio.run(client.db_api.get_product_details(product_code))
 
+    if not product:
+        console.print(f"❌ Product '{product_code}' not found.")
+        return
+    elif product.empty:
+        console.print(f"❌ Product '{product_code}' not found.")
+        return
+    
     required_fields = set(['product_id', 'code', 'ean', 'descriptions'])
     fields = set(fields) if fields else required_fields
     fields |= required_fields
@@ -190,10 +201,6 @@ def search_product(product_code, format, language, embed, fields):
     if 'descriptions' in fields:
         product['descriptions'] = product['descriptions'].apply(
             lambda x: [desc for desc in x if desc['language'] == language])
-
-    if product.empty:
-        console.print(f"❌ Product '{product_code}' not found.")
-        return
 
     if format == "df":
         msg = product.to_string(index=False)
@@ -217,15 +224,16 @@ def search_product(product_code, format, language, embed, fields):
 @click.option("--embed", is_flag=False, default=True, help="Launch ipython.embed() shell after showing products.")
 def show_products(embed):
     """Show all products with related data."""
+    client = UpgatesClient()
     # Get all product details (with foreign key relationships)
-
     products = asyncio.run(client.db_api.get_all_products())
     
+    console.print(products.to_json(orient="records", indent=2))
+
     if embed:
         IPython.embed()
     
-    #console.print(products.to_json(orient="records", indent=2))
-
+    
 
 
 

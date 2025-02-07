@@ -106,13 +106,13 @@ class UpgatesClient:
                         seo_url = desc.get('seo_url', '')
                         seo_keywords = desc.get('seo_keywords', '')
                         unit = desc.get('unit', 'ks')
-                        self.db_api.insert_description(product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit)
+                        self.db_api.insert_product_description(product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit)
 
                     # Insert prices
                     for price in product.get('prices', []):
                         currency = price.get('currency', 'unknown')
                         price_with_vat = next((pl.get('price_with_vat', 0) for pl in price.get('pricelists', [])), 0.0)
-                        self.db_api.insert_price(product_id, currency, price_with_vat)
+                        self.db_api.insert_product_price(product_id, currency, price_with_vat)
 
                     # Insert images
                     for image in product.get('images', []):
@@ -120,27 +120,27 @@ class UpgatesClient:
                         url = image.get('url', '')
                         main_yn = 1 if image.get('main_yn', False) else 0
                         position = image.get('position', 0)
-                        self.db_api.insert_image(product_id, file_id, url, main_yn, position)
+                        self.db_api.insert_product_image(product_id, file_id, url, main_yn, position)
 
                     # Insert categories
                     for category in product.get('categories', []):
-                        category_id = category.get('category_id', None)
+                        category_id = category.get('category_id')
                         category_code = category.get('code', '')
                         category_name = category.get('name', '')
-                        main_yn = 1 if category.get('main_yn', False) else 0
+                        main_yn = 1 if category.get('main_yn', 0) else 0
                         position = category.get('position', 0)
-                        self.db_api.insert_category(product_id, category_id, category_code, category_name, main_yn, position)
+                        self.db_api.insert_product_category(product_id, category_id, category_code, category_name, main_yn, position)
 
                     # Insert metadata
                     for meta in product.get('metas', []):
                         meta_key = meta.get('key', '')
                         meta_type = meta.get('type', '')
                         meta_value = meta.get('value', '')
-                        self.db_api.insert_meta(product_id, meta_key, meta_type, meta_value)
+                        self.db_api.insert_product_meta(product_id, meta_key, meta_type, meta_value)
 
                     # Insert VAT details
                     for vat_country, vat_percentage in product.get('vats', {}).items():
-                        self.db_api.insert_vat(product_id, vat_country, vat_percentage)
+                        self.db_api.insert_product_vat(product_id, vat_country, vat_percentage)
 
                 logfire.info(f"Product sync complete. {len(products)} products fetched and inserted.")
             else:
@@ -285,6 +285,7 @@ class UpgatesClient:
     
     async def translate_product(self, product_code: str, target_lang: str, prompt: str):
         target_lang = target_lang.upper()
+        prompt = (prompt or "").strip()
         
         # Add on additional details about the language; e.g., "cs" for Czech
 
@@ -293,10 +294,11 @@ class UpgatesClient:
 
         # Retrieve the product details from DuckDB (assumes a DataFrame is returned)
         product_details = await self.db_api.get_product_details(product_code)
-        if product_details.empty:
+        
+        if not product_details:
             logfire.error(f"🆘 Product '{product_code}' not found in local database.")
             return
-
+        
         # Assume the first record represents the product.
         product = product_details.iloc[0]
         

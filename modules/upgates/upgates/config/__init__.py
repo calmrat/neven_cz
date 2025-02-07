@@ -43,8 +43,6 @@ load_dotenv()
 # Python Logging
 logging_enabled = os.getenv("LOGGING_ENABLED", "").lower() in ("1", "true") or False
 logging_level = os.getenv("LOGGING_LEVEL", "").lower() or 'info'
-debug = logging_level # alias
-logging_level = logging.DEBUG if logging_level == 'debug' else logging.INFO
 
 # Logfire Logging
 logfire_enabled = os.getenv("LOGFIRE_ENABLED", "").lower() in ("1", "true") or True
@@ -97,14 +95,14 @@ if logging_enabled:
     logging.basicConfig(level=logging.INFO, format='%(message)s')
     logger = logging.getLogger(__name__)
 
-    if debug:    
+    if logging_level.lower() == "debug":
         logger.setLevel(logging.DEBUG)
         logger.debug(f"LOGGING: {debug_msg}")
     else:
         logger.info(f"LOGGING: {debug_msg}")
 
 if logfire_enabled:
-    if debug:
+    if logfire_consoloe_min_log_level.lower() == "debug":
         os.environ["LOGFIRE_CONSOLE_MIN_LOG_LEVEL"] = "debug"
     else:
         value = os.environ["LOGFIRE_CONSOLE_MIN_LOG_LEVEL"]
@@ -112,7 +110,7 @@ if logfire_enabled:
 
     logfire.configure()
     
-    if debug:
+    if logfire_consoloe_min_log_level.lower() == "debug":
         logfire.debug(f"LOGFIRE: {info_msg}")
     else:
         logfire.info(f"LOGFIRE: {info_msg}")

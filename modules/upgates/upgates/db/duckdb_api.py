@@ -15,7 +15,6 @@ Usage:
 File: /Users/cward/Repos/neven_cz/modules/upgates/upgates/db/duckdb_api.py
 """
 
-from math import log
 import os
 import duckdb
 import logfire
@@ -53,12 +52,15 @@ class UpgatesDuckDBAPI:
         logfire.debug("Initializing DuckDB tables...")
 
         # Create sequences for primary key auto-generation
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_product_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_description_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_prices_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_image_id START 1;")
-        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_category_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_meta_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_vat_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_category_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_customer_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_order_id START 1;")
 
         # Check if the database and tables exist before creating
         if not self._check_table_exists('products'):
@@ -105,7 +107,8 @@ class UpgatesDuckDBAPI:
         logfire.debug("Creating products table...")
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS products (
-                product_id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_product_id'),
+                product_id INTEGER UNIQUE,
                 code TEXT,
                 ean TEXT,
                 manufacturer TEXT,
@@ -131,7 +134,8 @@ class UpgatesDuckDBAPI:
         logfire.debug("Creating customers table...")
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS customers (
-                customer_id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_customer_id'),
+                customer_id INTEGER UNIQUE,
                 type TEXT,
                 firstname TEXT,
                 surname TEXT,
@@ -146,7 +150,8 @@ class UpgatesDuckDBAPI:
         logfire.debug("Creating orders table...")
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS orders (
-                order_id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_order_id'),
+                order_id INTEGER,
                 order_number TEXT,
                 customer_id INTEGER,
                 total_price FLOAT,
@@ -160,7 +165,8 @@ class UpgatesDuckDBAPI:
         logfire.debug("Creating descriptions table...")
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS descriptions (
-                description_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_description_id'),
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_description_id'),
+                -- description_id INTEGER,
                 product_id INTEGER,
                 language TEXT,
                 title TEXT,
@@ -181,7 +187,8 @@ class UpgatesDuckDBAPI:
         """Create prices table if it doesn't exist."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS prices (
-                price_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_prices_id'),
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_prices_id'),
+                price_id INTEGER,
                 product_id INTEGER,
                 currency TEXT,
                 price_with_vat FLOAT,
@@ -193,7 +200,8 @@ class UpgatesDuckDBAPI:
         """Create images table if it doesn't exist."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS images (
-                image_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_image_id'),
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_image_id'),
+                image_id INTEGER,
                 product_id INTEGER,
                 file_id INTEGER,
                 url TEXT,
@@ -207,7 +215,8 @@ class UpgatesDuckDBAPI:
         """Create categories table if it doesn't exist."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS categories (
-                category_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_category_id'),
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_category_id'),
+                category_id INTEGER,
                 product_id INTEGER,
                 category_code TEXT,
                 category_name TEXT,
@@ -267,7 +276,7 @@ class UpgatesDuckDBAPI:
         #product_count = self.conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
         #logfire.debug(f"Added Product ID {product_id}\nTotal number of products: {product_count}")
         
-    def insert_description(self, product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit):
+    def insert_product_description(self, product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit):
         """Insert product descriptions into the descriptions table."""
         # Czech language code is 'cz' in the database
         language = language.lower()
@@ -275,59 +284,61 @@ class UpgatesDuckDBAPI:
 
         seo_keywords = ', '.join(seo_keywords) if seo_keywords else ""
 
-        self.conn.execute("""
-            INSERT INTO descriptions (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit))
+        try:
+            self.conn.execute("""
+                INSERT INTO descriptions (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit))
+        except duckdb.duckdb.ConstraintException as e:
+            logfire.error(f"❌ Failed to insert description for product {product_id}: {e}")
+            import ipdb; ipdb.set_trace()
 
-    def insert_price(self, product_id, currency, price_with_vat):
+    def insert_product_price(self, product_id, currency, price_with_vat):
         """Insert price data into the prices table."""
         self.conn.execute("""
             INSERT INTO prices (product_id, currency, price_with_vat)
             VALUES (?, ?, ?)
         """, (product_id, currency, price_with_vat))
 
-    def insert_image(self, product_id, file_id, url, main_yn, position):
+    def insert_product_image(self, product_id, file_id, url, main_yn, position):
         """Insert image data into the images table."""
         self.conn.execute("""
             INSERT INTO images (product_id, file_id, url, main_yn, position)
             VALUES (?, ?, ?, ?, ?)
         """, (product_id, file_id, url, main_yn, position))
 
-    def insert_category(self, product_id, category_id, category_code, category_name, main_yn, position):
+    def insert_product_category(self, product_id, category_id, category_code, category_name, main_yn, position):
         """Insert category data into the categories table, skipping duplicates."""
         try:
             # Check if the category_id already exists
             existing_category = self.conn.execute("""
-                SELECT 1 FROM categories WHERE category_id = ?
-            """, (category_id,)).fetchone()
+                SELECT 1 FROM categories WHERE category_id = ? and product_id = ?
+            """, (category_id, product_id)).fetchone()
+
+            print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
 
             if existing_category:
-                pass
                 #logfire.debug(f"⚠️ Category with ID {category_id} already exists. Skipping insert.")
+                return
             else:
                 # Insert category if it doesn't exist
                 self.conn.execute("""
                     INSERT INTO categories (product_id, category_id, category_code, category_name, main_yn, position)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (product_id, category_id, category_code, category_name, main_yn, position))
-                logfire.debug(f"✅ Category with ID {category_id} inserted successfully.")
-                
-                ## Fetch and log all products for verification
-                #products = self.conn.execute("SELECT * FROM products").fetchall()
-                #logfire.info(f"All products: {products}")
+                logfire.info(f"✅ Category with ID {category_id} inserted successfully.")
 
         except Exception as e:
             logfire.error(f"❌ Failed to insert category {category_id}: {e}")
 
-    def insert_meta(self, product_id, meta_key, meta_type, meta_value):
+    def insert_product_meta(self, product_id, meta_key, meta_type, meta_value):
         """Insert metadata into the metas table."""
         self.conn.execute("""
             INSERT INTO metas (product_id, meta_key, meta_type, meta_value)
             VALUES (?, ?, ?, ?)
         """, (product_id, meta_key, meta_type, meta_value))
 
-    def insert_vat(self, product_id, country_code, vat_percentage):
+    def insert_product_vat(self, product_id, country_code, vat_percentage):
         """Insert VAT details into the vats table."""
         self.conn.execute("""
             INSERT INTO vats (product_id, country_code, vat_percentage)
@@ -435,6 +446,9 @@ class UpgatesDuckDBAPI:
             parameters.append(product_id)
         
         result = self.conn.execute(query, parameters).fetchdf()
+        
+        import ipdb; ipdb.set_trace()
+        
         return result
 
     def get_product_vat(self, product_id=None):
@@ -499,7 +513,7 @@ class UpgatesDuckDBAPI:
         logfire.info(f"Found {len(products)} products.")
         return products
 
-    async def get_product_details(self, code=None, product_id=None) -> pd.DataFrame:
+    async def get_product_details(self, code=None, product_id=None) -> pd.DataFrame | None:
         """Show all products with aggregated details from separate queries."""
         logfire.info(f"Fetching product details for code, product_id: {code}, {product_id}")
 
@@ -509,7 +523,12 @@ class UpgatesDuckDBAPI:
         if code and not product_id:
             query = "SELECT product_id FROM products WHERE code = ?"
             params = [code]
-            product_id = self.conn.execute(query, params).fetchone()[0]
+            product_id = self.conn.execute(query, params).fetchone()
+            if product_id:
+                product_id = product_id[0]
+            else:
+                logfire.debug(f"Product with code '{code}' not found.")
+                return None
 
         core = self.get_product_core(product_id)
         images = self.get_product_images(product_id)
