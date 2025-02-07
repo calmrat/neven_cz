@@ -1,4 +1,33 @@
-# abra v0.1.0.0 - Fully Nested Invoice Import to DuckDB
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+cli.py - Abra Invoice CLI
+
+This script provides a command-line interface for importing, searching, and migrating invoices
+to and from a DuckDB database. It uses the `click` library for command-line argument parsing
+and the `rich` library for console output.
+
+Usage:
+    python /Users/cward/Repos/neven_cz/modules/abra/bin/cli.py [COMMAND] [OPTIONS]
+
+Commands:
+    init_db         Initialize the DuckDB database for invoices
+    import_invoices Import invoices from a single XML to DuckDB
+    search_invoices Search invoices in the DuckDB database
+    migrate_invoices Migrate invoices to Pohoda format (XML)
+
+Options:
+    --reset         Reset the database
+    --db-path       Specify the database path
+    --migrate       Migrate invoices to Pohoda format
+    --embed         Embed IPython shell after operation
+    --output-filename Specify the output filename for migrated invoices
+    --last          Display only the last invoice
+
+Example:
+    python bin/cli.py import_invoices --db-path mydb.duckdb --migrate
+"""
 
 import os
 import click
@@ -14,8 +43,6 @@ import logging
 
 logger = logging.getLogger()
 
-VERSION = "v0.1.0.0"
-
 # Configure logging
 console = Console()
 
@@ -27,7 +54,7 @@ if not sample_input_path.exists():
     logger.debug(f"Expected path: {sample_input_path}")
     logger.debug("Please provide a valid XML file path.")
 
-logger.info(f"abra {VERSION} - Fully Nested Invoice Import to DuckDB")
+logger.info("abra - Fully Nested Invoice Import to DuckDB")
 
 # CLI entrypoint
 @click.group()
@@ -147,3 +174,5 @@ cli.add_command(migrate_invoices)
 
 if __name__ == "__main__":
     cli()
+
+# EOF

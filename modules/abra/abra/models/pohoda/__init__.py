@@ -1,7 +1,84 @@
-from pydantic import BaseModel
-from typing import List, Optional
+# -*- coding: utf-8 -*-
+#!/usr/bin/env python
 
+"""
+This module defines data models for handling invoices in the Pohoda accounting system.
+
+Classes:
+    PaymentType: Represents the type of payment.
+    Address: Represents an address with optional fields for additional details.
+    Identity: Represents an identity with an address and an optional shipping address.
+    InvoiceHeader: Represents the header information of an invoice.
+    HomeCurrency: Represents the home currency details.
+    StockItem: Represents a stock item with an optional ID.
+    InvoiceItem: Represents an item in an invoice.
+    InvoiceDetail: Represents the details of an invoice, including a list of invoice items.
+    InvoiceSummaryCurrency: Represents the summary of an invoice in home currency.
+    InvoiceSummary: Represents the summary of an invoice.
+    Invoice: Represents an invoice with header, detail, and summary information.
+    Invoices: Represents a list of invoices.
+
+Usage:
+
+    # Example of creating an invoice
+    invoice = Invoice(
+        version="1.0",
+        invoiceHeader=InvoiceHeader(
+            invoiceType="issuedInvoice",
+            number="2021001",
+            numberOrder="2021001",
+            symVar="2021001",
+            date=datetime.now(),
+            dateTax=datetime.now(),
+            dateDue=datetime.now(),
+            paymentType=PaymentType(paymentType="transfer"),
+            myIdentity=Identity(
+                address=Address(
+                    company="My Company",
+                    city="My City",
+                    street="My Street",
+                    zip="12345"
+                )
+            ),
+            partnerIdentity=Identity(
+                address=Address(
+                    company="Partner Company",
+                    city="Partner City",
+                    street="Partner Street",
+                    zip="54321"
+                )
+            )
+        ),
+        invoiceDetail=InvoiceDetail(
+            invoiceItems=[
+                InvoiceItem(
+                    text="Item 1",
+                    quantity=1,
+                    payVAT=True,
+                    rateVAT="high",
+                    homeCurrency=HomeCurrency(unitPrice=100.0)
+                )
+            ]
+        ),
+        invoiceSummary=InvoiceSummary(
+            homeCurrency=InvoiceSummaryCurrency(
+                priceHigh=100.0,
+                priceHighVAT=21.0,
+                priceHighSum=121.0,
+                priceNone=0.0
+            )
+        )
+    )
+
+File:
+    /Users/cward/Repos/neven_cz/modules/abra/abra/models/pohoda/__init__.py
+"""
+
+from typing import List, Optional
 from datetime import datetime
+
+from pydantic import BaseModel
+
 
 class PaymentType(BaseModel):
     paymentType: str
@@ -83,3 +160,6 @@ class Invoice(BaseModel):
 
 class Invoices(BaseModel):
     invoices: List[Invoice]
+
+if __name__ == "__main__":
+    pass

@@ -1,6 +1,41 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Invoice Handler Module
+
+This module provides functionality to handle invoices, including parsing XML invoices,
+synchronizing them with a DuckDB database, and migrating them to a different format.
+
+Usage:
+    1. Initialize the InvoiceHandler with the path to the DuckDB database.
+    2. Call `init_tables` to create the necessary tables in the database.
+    3. Use `parse_invoices` to parse invoices from an XML file.
+    4. Call `sync_invoices` to synchronize the parsed invoices with the database.
+    5. Use `load_invoices` to load invoices from the database.
+    6. Call `migrate_invoices` to migrate the loaded invoices to a different format.
+    7. Use `save_migrated_invoices` to save the migrated invoices to an XML file.
+
+Example:
+
+    db_path = Path("/path/to/your/database.duckdb")
+    xml_file = Path("/path/to/your/invoices.xml")
+
+    handler = InvoiceHandler(db_path)
+    handler.init_tables()
+    handler.parse_invoices(xml_file)
+    handler.sync_invoices()
+    handler.load_invoices()
+    handler.migrate_invoices()
+    handler.save_migrated_invoices()
+
+File: /Users/cward/Repos/neven_cz/modules/abra/abra/handlers.py
+"""
+
 import re
 import dateutil
 import logging
+
+import duckdb
 
 from datetime import datetime
 from pathlib import Path
@@ -8,10 +43,7 @@ from typing import List, Optional
 
 from xml.etree import ElementTree as ET
 
-import duckdb
-
-
-from abra.models.abra import Invoice, Invoices, InvoiceItem
+from abra.models import abra as a
 from abra.models import pohoda as p
 from abra import config
 
@@ -351,7 +383,7 @@ def build_data_pack(invoices_data: dict) -> str:
 
 class InvoiceHandler:
     conn = None
-    invoices: Invoices | None = None
+    invoices: a.Invoices | None = None
     migrated: p.Invoices | None = None
 
     def __init__(self, db_path : Path):
@@ -422,7 +454,7 @@ class InvoiceHandler:
             return None
         return self._parse_date(text)
 
-    def __xml_extract_invoice_items(self, element: ET.Element) -> List[InvoiceItem]:
+    def __xml_extract_invoice_items(self, element: ET.Element) -> List[a.InvoiceItem]:
         items = []
         all_elements = element.findall(".//polozkyFaktury")
         for item_elements in all_elements:
@@ -450,7 +482,7 @@ class InvoiceHandler:
                         log.error(f"🔥🔥🔥 [SKIPPED] {_.text} Missing ext_kod/id. 🔥🔥🔥")
                     continue
                 
-                items.append(InvoiceItem(
+                items.append(a.InvoiceItem(
                     id=_id,
                     ext_kod=ext_kod,
                     ext_kod_k=ext_kod_k,
@@ -552,7 +584,7 @@ class InvoiceHandler:
                 ))
         return items
     
-    def from_xml(self, element: ET.Element) -> "Invoice":
+    def from_xml(self, element: ET.Element) -> "a.Invoice":
         # Handling duplicate <id> elements: first for ext_kod, second for id
         ids = element.findall("id")
         ext_id = None
@@ -566,7 +598,7 @@ class InvoiceHandler:
 
         polozky_faktury = self.__xml_extract_invoice_items(element)
 
-        return Invoice(
+        return a.Invoice(
             ext_id=ext_id,
             id=_id,
             kod=self._xml_get_text("kod", element),
@@ -995,7 +1027,7 @@ class InvoiceHandler:
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_invoice_items_id ON invoice_items (id)")
             
     # Function to parse XML invoices
-    def parse_invoices(self, xml_file: Path) -> List[Invoice]:
+    def parse_invoices(self, xml_file: Path) -> List[a.Invoice]:
         tree = ET.parse(xml_file)
         root = tree.getroot()
         invoices = []
@@ -1004,7 +1036,7 @@ class InvoiceHandler:
         for invoice in root.findall(".//faktura-vydana"):
             invoices.append(self.from_xml(invoice))
 
-        self.invoices = Invoices(invoices=invoices)
+        self.invoices = a.Invoices(invoices=invoices)
         return self
 
     def sync_invoices(self):
@@ -1268,7 +1300,7 @@ class InvoiceHandler:
 
         log.info("Invoices synced successfully.")
     
-    def load_invoices(self) -> List[Invoice]:
+    def load_invoices(self) -> List[a.Invoice]:
         log.debug("Loading invoices from database.")
         rows = self.conn.execute("SELECT * FROM invoices").fetchall()
         invoices = []
@@ -1276,7 +1308,7 @@ class InvoiceHandler:
         for row in rows:
             results = self.conn.execute("SELECT * FROM invoice_items WHERE ext_kod = ?", (row[3],)).fetchall()
             
-            polozky_faktury = [InvoiceItem(
+            polozky_faktury = [a.InvoiceItem(
                 id=item[2],
                 ext_kod=item[0],
                 ext_kod_k=item[1],
@@ -1377,7 +1409,7 @@ class InvoiceHandler:
                 vyrobni_cisla_vydana=item[97]
             ) for item in results]
 
-            invoices.append(Invoice(
+            invoices.append(a.Invoice(
                 ext_id=row[0],
                 id=row[1],
                 last_update=self._parse_date(row[2]),
@@ -1535,7 +1567,7 @@ class InvoiceHandler:
                 odpoc_auto=row[154],
                 polozky_faktury=polozky_faktury)
             )
-        self.invoices = Invoices(invoices=invoices)
+        self.invoices = a.Invoices(invoices=invoices)
         log.debug("Invoices loaded successfully.")
         return self.invoices.invoices
 

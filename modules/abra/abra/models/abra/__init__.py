@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python3
 """
 This module defines Pydantic models for parsing and validating invoice data.
 
@@ -13,7 +12,10 @@ Usage:
 
     # Example of creating a list of invoices
     invoices = Invoices(invoices=[invoice])
+
+Filename: modules/abra/abra/models/abra/__init__.py
 """
+
 
 from pydantic import BaseModel, Field
 from typing import List, Optional

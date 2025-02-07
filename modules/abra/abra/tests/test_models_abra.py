@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+#!/usr/bin/env python
+
+"""
+Unit tests for the abra models.
+
+This module contains tests for the following models:
+- InvoiceItem
+- Invoice
+- Invoices
+
+Usage: `pytest` 
+    
+Filename: pytest modules/abra/abra/tests/test_models_abra.py
+"""
 import pytest
 
 from datetime import datetime

@@ -1,18 +1,29 @@
+# -*- coding: utf-8 -*-
+
+"""
+This module initializes configuration settings for the Abra application.
+
+Usage:
+    This module is automatically imported and executed to set up environment variables,
+    logging, and directory paths for the application.
+
+File:
+    /Users/cward/Repos/neven_cz/modules/abra/abra/config/__init__.py
+"""
+
+import logging
 import os
 
 from pathlib import Path
 from dotenv import load_dotenv
 
-import logging
-
-# Logging
-
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-
-logger = logging.getLogger()
 
 # Load environment variables
 load_dotenv()
+
+# Setup Logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger()
 
 if str(os.getenv("DEBUG")).lower() in ("1", "true"):
     logger.setLevel(logging.DEBUG)
