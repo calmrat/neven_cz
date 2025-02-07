@@ -1,38 +1,66 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+CLI tool for managing Upgates API sync, translation, and configuration.
+
+Usage:
+    python cli.py [COMMAND]
+
+Commands:
+    start-webhook       Start webhook server for real-time updates.
+    start-scheduler     Start scheduled auto-sync process.
+    sync-all            Sync all data: products, customers, orders.
+    sync-products       Sync products data.
+    sync-customers      Sync customers data.
+    sync-orders         Sync orders data.
+    init-config         Initialize configuration by prompting for missing values.
+    search-product      Search for a product by product_code.
+    show-products       Show all products with related data.
+    show-customers      Show all customers.
+    show-orders         Show all orders.
+    clear-cache         Force-clear the DuckDB cache file.
+    translate-product   Translate product descriptions for a given language.
+    save-translation    Save the updated product translations back to Upgates.cz API.
+
+File:
+    $> upgates --help
+"""
+
 import sys
 import os
 import click
 import asyncio
 import subprocess
-import toml
-import json
-import pandas as pd
-import ipdb
-import duckdb
-#import atexit
 
+import duckdb
+import IPython
+
+from pathlib import Path
+
+from rich.console import Console
 
 # Ensure the package directory is included in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from upgates.upgates_client import UpgatesClient
-from upgates.config import config
+from upgates.client import UpgatesClient
+from upgates import config
 
-cache_path = config["database"].get("cache_path", ".data/cache")  # Default to .data/cache if not defined
-# Update DuckDB path using the config-provided cache path
-db_file = os.path.join(cache_path, "duckdb_cache.db")
+# Configure Rich Console output
+console = Console()
 
+# Initialize the Upgates API client
 client = UpgatesClient()
 
-
-def _clear_cache(cache_path=".data/cache"):
+def _clear_cache(db_file: Path = None):
     """Clear the DuckDB cache file."""
-    db_file = os.path.join(cache_path, "duckdb_cache.db")
+    db_file = Path(db_file) or config.default_db_path
 
     if os.path.exists(db_file):
         os.remove(db_file)
-        click.echo("DuckDB cache file cleared.")
+        console.print("DuckDB cache file cleared.")
     else:
-        click.echo("Cache file not found, nothing to clear.")
+        console.print("Cache file not found, nothing to clear.")
 
 @click.group()
 def cli():
@@ -140,18 +168,16 @@ def search_product(product_code, format, embed):
     product = asyncio.run(client.db_api.get_product_details(product_code))
 
     if product.empty:
-        click.echo(f"❌ Product '{product_code}' not found.")
+        console.print(f"❌ Product '{product_code}' not found.")
         return
 
     if format == "df":
         if embed:
-            import ipdb; ipdb.set_trace()            
+            IPython.embed()
         else:
-            click.echo(product.to_string(index=False))
+            console.print(product.to_string(index=False))
     elif format == "json":
-        click.echo(product.to_json(orient="records", indent=2))
-    #else:
-    #    click.echo(toml.dumps(product), fg="green")
+        console.print(product.to_json(orient="records", indent=2))
 
 @click.command(name="show-products")
 @click.option("--embed", is_flag=True, default=True, help="Launch ipython.embed() shell after showing products.")
@@ -161,40 +187,41 @@ def show_products(embed):
     products = client.db_api.get_product_details()
     
     if embed:
-        import ipdb; ipdb.set_trace()
+        IPython.embed()
     
-    click.echo(products.to_json(orient="records", indent=2))
+    console.print(products.to_json(orient="records", indent=2))
 
 @click.command(name="show-customers")
 def show_customers():
     """Show all customers."""
+    db_file = config.default_db_path
     conn = duckdb.connect(db_file)
     df = conn.execute("SELECT * FROM customers").fetchdf()
     conn.close()
-    print(df.head())
+    console.print(df.head())
 
 @click.command(name="show-orders")
 def show_orders():
     """Show all orders."""
+    db_file = config.default_db_path
     conn = duckdb.connect(db_file)
     df = conn.execute("SELECT * FROM orders").fetchdf()
     conn.close()
-    print(df.head())
+    console.print(df.head())
 
 @click.command()
 def clear_cache():
     """Force-clear the DuckDB cache file."""
-    db_file = os.path.join(config["database"].get("cache_path", ".data/cache"), "duckdb_cache.db")
-
+    db_file = config.default_db_path
     # Ensure the cache file exists before attempting to remove
     if os.path.exists(db_file):
         try:
             os.remove(db_file)
-            click.echo("✅ Database cache file cleared successfully.")
+            console.print("✅ Database cache file cleared successfully.")
         except Exception as e:
-            click.echo(f"❌ Failed to clear cache file: {e}")
+            console.print(f"❌ Failed to clear cache file: {e}")
     else:
-        click.echo("⚠️ Cache file does not exist.")
+        console.print("⚠️ Cache file does not exist.")
 
 cli.add_command(start_webhook)
 cli.add_command(start_scheduler)

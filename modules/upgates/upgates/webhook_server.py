@@ -1,7 +1,28 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Webhook Server for Upgates Integration
+
+This module sets up a Flask server to handle webhooks from Upgates. It listens for
+real-time updates and triggers appropriate synchronization tasks based on the event type.
+
+Usage:
+    Run this script to start the webhook server:
+    $ python /Users/cward/Repos/neven_cz/modules/upgates/upgates/webhook_server.py
+
+Routes:
+    /webhook (POST): Endpoint to receive webhook events from Upgates.
+
+Event Types:
+    - product.updated: Triggers product synchronization.
+    - customer.updated: Triggers customer synchronization.
+    - order.updated: Triggers order synchronization.
+"""
 
 from flask import Flask, request, jsonify
 import asyncio
-from upgates.upgates_client import UpgatesClient
+from upgates.client import UpgatesClient
 
 app = Flask(__name__)
 client = UpgatesClient()

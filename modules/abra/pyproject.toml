@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "abra"
-version = "0.1.0"
+version = "0.1.2-dev"
 description = ""
 authors = ["Chris Ward <chris@calmrat.com>"]
 

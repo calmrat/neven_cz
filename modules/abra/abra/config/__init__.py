@@ -47,7 +47,7 @@ output_path = data_path / "output"
 logs_path = data_path / "logs"
 db_path = data_path / "db"
 
-db_file = "invoices.duckdb"
+db_file = "abra_invoices.duckdb"
 default_db_path = db_path / db_file
 
 

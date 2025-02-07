@@ -1,30 +1,34 @@
+# -*- coding: utf-8 -*-
+"""
+Upgates Client Module
+
+This module provides an asynchronous API client for Upgates.cz, enabling data synchronization,
+logging, and translation functionalities. The client supports syncing products, customers, and
+orders from the Upgates API and storing the data in a DuckDB database. Additionally, it includes
+methods for translating product descriptions using AI and saving the translations back to the API.
+
+Usage:
+
+    client = UpgatesClient()
+    asyncio.run(client.sync_all())
+
+File: upgates/client.py
+"""
+
 import os
 import aiohttp
 import asyncio
 import logfire
 
-from tqdm.asyncio import tqdm
 from typing import List, Dict
 
-from datetime import datetime
-
-from upgates.config import config
-from upgates.db.upgates_duckdb_api import UpgatesDuckDBAPI
+from upgates import config
+from upgates.db.duckdb_api import UpgatesDuckDBAPI
 from upgates.ai import translate_text, TranslationDeps
 
 # Set retry attempts from config (default: 1)
-RETRY_ATTEMPTS = config.get("api", {}).get("retry_attempts", 1)
+RETRY_ATTEMPTS = config.upgates_api_retry_limit
 
-# Ensure the cache directory exists
-cache_path = config["database"].get("cache_path", ".data/cache")
-os.makedirs(cache_path, exist_ok=True)
-
-# Update DuckDB path
-db_file = os.path.join(cache_path, "duckdb_cache.db")
-
-# Set log level from environment or config file, default to "info"
-#log_level: str = os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL", config.get("logging", {}).get("log_level", "info"))
-logfire.configure()
 
 def log_sync_statistics(sync_results: Dict[str, List]) -> None:
     """Log the number of each object type saved during sync."""
@@ -34,13 +38,14 @@ def log_sync_statistics(sync_results: Dict[str, List]) -> None:
 class UpgatesClient:
     """Async API Client for Upgates with proper syncing, logging, and translations."""
     
-    API_URL = config["upgates"]["api_url"]
-    LOGIN = config["upgates"]["login"]
-    API_KEY = config["upgates"]["api_key"]
-    VERIFY_SSL = config["api"].get("verify_ssl", True)
-    DATA_PATH = config["database"].get("data_path", ".data")
-    DB_FILE = db_file
-    PARALLEL_BATCHES = config["api"].get("parallel_batches", 1)
+    PARALLEL_BATCH_SIZE = config.paralell_batch_size
+    
+    DATA_PATH = config.data_path
+    DB_FILE = config.db_file
+    API_URL = config.upgates_api_url
+    LOGIN = config.upgates_login
+    API_KEY = config.upgates_api_key
+    VERIFY_SSL = config.upgates_verify_ssl
 
     def __init__(self):
         """Ensure DuckDB database is initialized before starting."""
@@ -404,3 +409,5 @@ class UpgatesClient:
                         logfire.error(f"Failed to save translations. Status: {resp.status} - {error_text}")
         except Exception as e:
             logfire.error(f"Error while saving translations: {e}")
+
+# EOF

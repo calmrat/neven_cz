@@ -26,7 +26,7 @@ Options:
     --last          Display only the last invoice
 
 Example:
-    python bin/cli.py import_invoices --db-path mydb.duckdb --migrate
+    $> abra --help
 """
 
 import os
@@ -43,7 +43,7 @@ import logging
 
 logger = logging.getLogger()
 
-# Configure logging
+# Configure Rich Console output
 console = Console()
 
 sample_input_filename = "abra/faktura_vydana-sample-1.xml"

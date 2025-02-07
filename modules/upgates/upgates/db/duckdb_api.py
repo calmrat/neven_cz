@@ -1,13 +1,28 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+DuckDB API for Upgates Data Management
+
+This module provides a class `UpgatesDuckDBAPI` to manage interactions with DuckDB for Upgates data.
+It includes methods to initialize the database, create tables, insert data, and retrieve data.
+
+Usage:
+
+    db_api = UpgatesDuckDBAPI()
+    db_api.insert_product(...)
+    product_details = db_api.get_product_details(product_id=123)
+
+File: /Users/cward/Repos/neven_cz/modules/upgates/upgates/db/duckdb_api.py
+"""
+
 import os
 import duckdb
 import logfire
 
 import pandas as pd
 
-from upgates.config import config
-from deepdiff import DeepDiff
+from upgates import config
 
-#logfire.configure()
 
 class UpgatesDuckDBAPI:
     """Class to manage interactions with DuckDB for Upgates data."""
@@ -16,8 +31,8 @@ class UpgatesDuckDBAPI:
 
     def __init__(self):
         """Initialize the DuckDB API client."""
-        self.cache_path = config["database"].get("cache_path", ".data/cache")
-        self.db_file = os.path.join(self.cache_path, "duckdb_cache.db")
+        self.cache_path = config.cache_path
+        self.db_file = config.default_db_path
         self._ensure_cache_directory_exists()
         existed_already = os.path.exists(self.db_file)
         self.conn = duckdb.connect(self.db_file)
@@ -30,7 +45,7 @@ class UpgatesDuckDBAPI:
         else:
             logfire.debug("DuckDB tables already exist. Skipping initialization.")
 
-        #logfire.debug("UpgatesDuckDBAPI initialized.")
+        logfire.debug("UpgatesDuckDBAPI initialized.")
 
     def _initialize_db(self):
         """Create tables if they don't exist."""
@@ -248,7 +263,7 @@ class UpgatesDuckDBAPI:
             exclude_from_search_yn
         ))
         # Debug output the count of products
-        product_count = self.conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        #product_count = self.conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
         #logfire.debug(f"Added Product ID {product_id}\nTotal number of products: {product_count}")
         
     def insert_description(self, product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit):
@@ -553,3 +568,5 @@ class UpgatesDuckDBAPI:
             ))
         except Exception as e:
             logfire.error(f"Failed to update translation for product '{product_code}' in DuckDB: \nERROR: {e}")
+
+# EOF
