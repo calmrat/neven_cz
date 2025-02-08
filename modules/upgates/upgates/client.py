@@ -20,6 +20,7 @@ import asyncio
 from flask.cli import F
 import logfire
 
+from datetime import datetime
 from typing import List, Dict
 import pandas as pd
 
@@ -339,6 +340,8 @@ class UpgatesClient:
             " * Offer Metric and Imperial/US measurements for products too, if applicable.\n\n"
             " * Always fill-in, optimize and translate the following fields:\n "
             "title, short_description, long_description, seo_description, seo_title, seo_keywords, seo_url, unit\n\n"
+            f"Add a note: '<br/><h6>[{target_lang.upper()}] on {datetime.now().strftime('%B %d, %Y')} with {config.ai_model}</h6>'\n\n"
+            "Product Details:\n"
             f"Product code: {product_code}\n\n"
             f"Title: {source_title}\n\n"
             f"Long Description: {source_long}"

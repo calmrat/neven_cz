@@ -66,6 +66,11 @@ openai_api_key = os.getenv("OPENAI_API_KEY", "")
 openai_default_model = os.getenv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini")
 openai_default_retries = os.getenv("OPENAI_DEFAULT_RETRIES", 1)
 
+ai_model = openai_default_model if openai_enabled else None
+
+if not ai_model:
+    raise NotImplementedError("AI Model (with key) is required for translation.")
+
 # Define application filestystem paths
 neven_path = Path(os.getenv("NEVEN_PATH", "~/.neven/"))
 
