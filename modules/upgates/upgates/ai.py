@@ -36,7 +36,7 @@ class TranslationResult(BaseModel):
     long_description: str = Field(..., description="The translated and optimized long description.", title="Translated Long Description")
     seo_description: str = Field(..., description="SEO-friendly description for the product.", title="SEO Description")
     seo_title: str = Field(..., description="SEO-friendly title for the product.", title="SEO Title")
-    seo_keywords: str = Field(..., description="SEO-friendly list (csv) of keywords for the product.", title="SEO Keywords")
+    seo_keywords: str = Field(..., description="REQUIRED: SEO-friendly list (csv) of keywords for the product.", title="SEO Keywords")
     seo_url: str = Field(..., description="SEO-friendly (relative page) URL for the product.", title="SEO URL")
     unit: str = Field(..., description="The unit of measurement for the product. (default 'ks' if unsure)", title="Unit")
     error: str = Field(..., description="Error message if transformation failed.", title="Error")
@@ -56,13 +56,7 @@ agent_translator = Agent(
     target_model,
     result_type=TranslationResult,
     deps_type=TranslationDeps,
-    system_prompt=(
-        "You are a multi-lingual translator and an clean html expert."
-        "You recognize that sometimes there are product names in English, which are not intended to be translated."
-        "You try to remain true to the original meaning of the text, nuanced for the target language."
-        "You will always fill-in, optimize and translate the following fields to the best of your ability:"
-        "title, short_description, long_description, seo_description, seo_title, seo_keywords, seo_url, unit."
-    ),
+    system_prompt="You are a multi-lingual translator and an clean html expert.",
     retries=config.openai_default_retries,
 )
 

@@ -563,50 +563,24 @@ class UpgatesDuckDBAPI:
         """
 
         # NOTE: This query has a subquery that looks up the product_id based on the product_code
-        
         try:
             query = """
-                INSERT INTO descriptions (
-                    product_id,
-                    language,
-                    title,
-                    long_description,
-                    short_description,
-                    url,
-                    seo_keywords,
-                    seo_description,
-                    seo_title,
-                    seo_url,
-                    unit
-                )
-                VALUES (
-                    (SELECT product_id FROM products WHERE code = ?),
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
-                ON CONFLICT(product_id, language) DO UPDATE
-                SET title = excluded.title,
-                    long_description = excluded.long_description,
-                    short_description = excluded.short_description,
-                    url = excluded.url,
-                    seo_keywords = excluded.seo_keywords,
-                    seo_description = excluded.seo_description,
-                    seo_title = excluded.seo_title,
-                    seo_url = excluded.seo_url,
-                    unit = excluded.unit
-
+                UPDATE descriptions
+                SET 
+                    title = ?,
+                    long_description = ?,
+                    short_description = ?,
+                    url = ?,
+                    seo_keywords = ?,
+                    seo_description = ?,
+                    seo_title = ?,
+                    seo_url = ?,
+                    unit = ?
+                WHERE 
+                    product_id = (SELECT product_id FROM products WHERE code = ?)
+                    AND language = LOWER(?)
             """
             self.conn.execute(query, (
-                product_code,
-                translations.get("target_language"),
                 translations.get("title"),
                 translations.get("long_description"),
                 translations.get("short_description"),
@@ -615,7 +589,9 @@ class UpgatesDuckDBAPI:
                 translations.get("seo_description"),
                 translations.get("seo_title"),
                 translations.get("seo_url"),
-                translations.get("unit")
+                translations.get("unit"),
+                product_code,
+                translations.get("target_language")
             ))
         except Exception as e:
             logfire.error(f"Failed to update translation for product '{product_code}' in DuckDB: \nERROR: {e}")

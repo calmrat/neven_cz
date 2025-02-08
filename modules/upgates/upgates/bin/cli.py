@@ -170,7 +170,8 @@ def save_translation(product_code, target_lang, update):
     """Save the updated product translations back to Upgates.cz API."""
     client = UpgatesClient()
     if update:
-        asyncio.run(client.translate_product(product_code, target_lang))
+        empty_prompt = ""
+        asyncio.run(client.translate_product(product_code, target_lang, empty_prompt))
     asyncio.run(client.save_translation(product_code, target_lang))
 
 
