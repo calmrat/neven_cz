@@ -21,7 +21,9 @@ from flask.cli import F
 import logfire
 
 from typing import List, Dict
+import pandas as pd
 
+from upgates.models.translation import TranslationRequest
 from upgates import config
 from upgates.db.duckdb_api import UpgatesDuckDBAPI
 from upgates.ai import translate_text, TranslationDeps
@@ -283,7 +285,7 @@ class UpgatesClient:
         logfire.info(f"✅ All pages fetched. Total items: {len(all_data)}")
         return {endpoint: all_data}
     
-    async def translate_product(self, product_code: str, target_lang: str, prompt: str):
+    async def translate_product(self, product_code: str, target_lang: str, prompt: str) -> TranslationRequest | None:
         target_lang = target_lang.upper()
         prompt = (prompt or "").strip()
         
@@ -293,11 +295,13 @@ class UpgatesClient:
         logfire.info(f"Prompt Injected: {prompt}")
 
         # Retrieve the product details from DuckDB (assumes a DataFrame is returned)
-        product_details = await self.db_api.get_product_details(product_code)
+        product_details = await self.db_api.get_product_details(code=product_code)
+
+        if product_details is None:
+            return None
         
-        if not product_details:
-            logfire.error(f"🆘 Product '{product_code}' not found in local database.")
-            return
+        if isinstance(product_details, pd.DataFrame) and product_details.empty:
+            return None
         
         # Assume the first record represents the product.
         product = product_details.iloc[0]

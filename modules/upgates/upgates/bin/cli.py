@@ -152,7 +152,11 @@ def translate_product(product_code, target_lang, prompt, save, update):
     """Translate a product's descriptions from Czech to TARGET_LANG."""
     prompt = " ".join(prompt) if prompt else None
     client = UpgatesClient()
-    asyncio.run(client.translate_product(product_code, target_lang, prompt))
+    try:
+        asyncio.run(client.translate_product(product_code, target_lang, prompt))
+    except ValueError as e:
+        console.print(f"❌ Translation failed: {e}")
+        return
     search_product.callback(product_code, "json", target_lang, False, list())
     if save:
         save_translation.callback(product_code, target_lang, update)
@@ -181,7 +185,7 @@ def search_product(product_code, format, language, embed, fields):
     client = UpgatesClient()
     product = asyncio.run(client.db_api.get_product_details(product_code))
 
-    if not product:
+    if product is None:
         console.print(f"❌ Product '{product_code}' not found.")
         return
     elif product.empty:

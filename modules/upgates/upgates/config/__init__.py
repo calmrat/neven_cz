@@ -41,11 +41,11 @@ def init_dirs(paths) -> int:
 load_dotenv()
 
 # Python Logging
-logging_enabled = os.getenv("LOGGING_ENABLED", "").lower() in ("1", "true") or False
+logging_enabled = os.getenv("LOGGING_ENABLED", "").lower() in ("1", "true")
 logging_level = os.getenv("LOGGING_LEVEL", "").lower() or 'info'
 
 # Logfire Logging
-logfire_enabled = os.getenv("LOGFIRE_ENABLED", "").lower() in ("1", "true") or True
+logfire_enabled = os.getenv("LOGFIRE_ENABLED", "").lower() in ("1", "true")
 logfire_consoloe_min_log_level = os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL").lower() or 'info'
 logfire_project = os.getenv("LOGFIRE_PROJECT", "neven-agents")
 
@@ -58,10 +58,10 @@ upgates_login = os.getenv("UPGATES_LOGIN", "")
 upgates_api_key = os.getenv("UPGATES_API_KEY", "")
 upgates_sync_interveral_minutes = os.getenv("UPGATES_SYNC_INTERVAL_MINUTES", 10)
 upgates_api_retry_limit = os.getenv("UPGATES_API_RETRY_LIMIT", 1)
-upgates_verify_ssl = os.getenv("UPGATES_VERIFY_SSL", "").lower() in ("1", "true") or True
+upgates_verify_ssl = os.getenv("UPGATES_VERIFY_SSL", "").lower() in ("1", "true")
 
 # Open AI
-openai_enabled = os.getenv("OPENAI_ENABLED", "").lower() in ("1", "true") or True
+openai_enabled = os.getenv("OPENAI_ENABLED", "").lower() in ("1", "true")
 openai_api_key = os.getenv("OPENAI_API_KEY", "")
 openai_default_model = os.getenv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini")
 openai_default_retries = os.getenv("OPENAI_DEFAULT_RETRIES", 1)
@@ -94,6 +94,7 @@ if logging_enabled:
     # Setup Logging
     logging.basicConfig(level=logging.INFO, format='%(message)s')
     logger = logging.getLogger(__name__)
+    # logger.propagate = False 
 
     if logging_level.lower() == "debug":
         logger.setLevel(logging.DEBUG)

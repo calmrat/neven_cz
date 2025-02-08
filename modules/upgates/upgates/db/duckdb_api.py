@@ -290,8 +290,8 @@ class UpgatesDuckDBAPI:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit))
         except duckdb.duckdb.ConstraintException as e:
-            logfire.error(f"❌ Failed to insert description for product {product_id}: {e}")
-            import ipdb; ipdb.set_trace()
+            logfire.debug(f"❌ Failed to insert description for product {product_id}: {e}")
+            #import ipdb; ipdb.set_trace()
 
     def insert_product_price(self, product_id, currency, price_with_vat):
         """Insert price data into the prices table."""
@@ -314,9 +314,7 @@ class UpgatesDuckDBAPI:
             existing_category = self.conn.execute("""
                 SELECT 1 FROM categories WHERE category_id = ? and product_id = ?
             """, (category_id, product_id)).fetchone()
-
-            print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
-
+            #print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
             if existing_category:
                 #logfire.debug(f"⚠️ Category with ID {category_id} already exists. Skipping insert.")
                 return
@@ -326,7 +324,7 @@ class UpgatesDuckDBAPI:
                     INSERT INTO categories (product_id, category_id, category_code, category_name, main_yn, position)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (product_id, category_id, category_code, category_name, main_yn, position))
-                logfire.info(f"✅ Category with ID {category_id} inserted successfully.")
+                logfire.debug(f"✅ Category with ID {category_id} inserted successfully.")
 
         except Exception as e:
             logfire.error(f"❌ Failed to insert category {category_id}: {e}")
@@ -447,7 +445,7 @@ class UpgatesDuckDBAPI:
         
         result = self.conn.execute(query, parameters).fetchdf()
         
-        import ipdb; ipdb.set_trace()
+        #import ipdb; ipdb.set_trace()
         
         return result
 
