@@ -1,4 +1,4 @@
-🚀 Upgatescz API - System Prompt for Python 3.12 Development 🚀
+🚀 System Prompt for Python 3.12 Development 🚀
 
 📌 Project Overview
 
