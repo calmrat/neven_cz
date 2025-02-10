@@ -329,23 +329,14 @@ class UpgatesClient:
         # Build the user prompt for the AI translator.
         #" * add noted '<br/><h6>This product description was translated with the help of AI.</h6>'\n\n"
             
-        user_prompt = (
-            f"Translate the following product details from Czech to {target_lang}.\n\n"
-            "Long Description:\n" 
-            " * clean, well formatted HTML : p, span, h2, h2, h3, h4, h5, h6, b, i, em, strong, img, table, ul, ol, li, br \n"
-            " * no inline styles, no inline scripts, no inline JS.\n"
-            " * <img>: Set width to 600px, if larger (max). Remove img height attribute. Add accessibility alt-tags.\n"
-            " * You recognize that sometimes there are product names in English, which are not intended to be translated.\n"
-            " * You try to remain true to the original meaning (technical) of the text, nuanced for the target language.\n"
-            " * Offer Metric and Imperial/US measurements for products too, if applicable.\n\n"
-            " * Always fill-in, optimize and translate the following fields:\n "
-            "title, short_description, long_description, seo_description, seo_title, seo_keywords, seo_url, unit\n\n"
-            f"Add a note: '<br/><h6>[{target_lang.upper()}] on {datetime.now().strftime('%B %d, %Y')} with {config.ai_model}</h6>'\n\n"
-            "Product Details:\n"
-            f"Product code: {product_code}\n\n"
-            f"Title: {source_title}\n\n"
-            f"Long Description: {source_long}"
-        )
+        user_prompt = f"""
+        Update all product fields in {target_lang} language based on this context:
+        Product Details:
+        Product code: {product_code}
+        Title: {source_title}
+        Long Description: {source_long}
+        """
+
         if prompt:
             user_prompt += f"\n\nAdditionally, {prompt}"
 

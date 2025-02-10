@@ -11,7 +11,7 @@ The async function translate_text() runs the agent and returns the validated dat
 
 import os
 
-#import logfire
+from datetime import datetime 
 
 from dataclasses import dataclass
 
@@ -51,14 +51,34 @@ class TranslationDeps:
 # Update the agent to use the default model from config
 target_model = config.openai_default_model
 
+system_prompt = """
+    You are a multi-lingual translator and an clean html expert.
+    
+    Special instructurions for "Long Description" field:
+    * write clean, well formatted HTML : p, span, h2, h2, h3, h4, h5, h6, b, i, em, strong, img, table, ul, ol, li, br
+    * no inline styles, no inline scripts, no inline JS.
+    * <img>: Set width to 600px, if larger (max). Remove img height attribute. Add accessibility alt-tags.
+    
+    You recognize that sometimes there are product names in English, which are not intended to be translated.
+    * You try to remain true to the original meaning (technical) of the text, nuanced for the target language.
+    * Offer Metric and Imperial/US measurements for products too, if applicable.
+    
+    You always update the following fields with the latest/best version of translated product field values:
+    title, short_description, long_description, seo_description, seo_title, seo_keywords, seo_url, unit
+    """.strip()
+
+#    Finally, add or update this note, translated to target language: 
+#    '<br/><h6>[TARGET_LANG] Translation updated on [TODAY: {datetime.now().strftime('%B %d, %Y')}] [{config.ai_model}]</h6>'\n\n
+
 # Instantiate the official pydantic_ai.Agent.
 agent_translator = Agent(
     target_model,
     result_type=TranslationResult,
     deps_type=TranslationDeps,
-    system_prompt="You are a multi-lingual translator and an clean html expert.",
+    system_prompt=system_prompt,
     retries=config.openai_default_retries,
 )
+
 
 async def translate_text(user_prompt: str, deps: TranslationDeps) -> TranslationResult:
     """

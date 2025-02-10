@@ -25,12 +25,15 @@ def expand_home(path):
     ''' Expand the user's home directory in a given path. '''
     if not path:
         path = Path.home()
-    return Path(os.path.expanduser(path))
+    else:
+        path = Path(path)
+        path = os.path.expanduser(path)
+    return Path(path)
 
 def init_dirs(paths) -> int:
     ''' Create directories if they do not exist. '''
     for path in paths:
-        path = Path(path)
+        path = expand_home(path)
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
 
