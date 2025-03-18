@@ -61,34 +61,33 @@ class UpgatesDuckDBAPI:
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_category_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_customer_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_order_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_description_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_value_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_value_description_id START 1;")
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_image_id START 1;")
 
         # Check if the database and tables exist before creating
         if not self._check_table_exists('products'):
             self._create_products_table()
-
         if not self._check_table_exists('customers'):
             self._create_customers_table()
-
         if not self._check_table_exists('orders'):
             self._create_orders_table()
-
         if not self._check_table_exists('descriptions'):
             self._create_descriptions_table()
-
         if not self._check_table_exists('prices'):
             self._create_prices_table()
-
         if not self._check_table_exists('images'):
             self._create_images_table()
-
         if not self._check_table_exists('categories'):
             self._create_categories_table()
-
         if not self._check_table_exists('metas'):
             self._create_metas_table()
-
         if not self._check_table_exists('vats'):
             self._create_vats_table()
+        if not self._check_table_exists('parameters'):
+            self._create_parameters_table()
 
         logfire.debug("DuckDB tables initialized.")
 
@@ -251,6 +250,71 @@ class UpgatesDuckDBAPI:
             );
         """)
 
+    def _create_parameter_descriptions_table(self):
+        """Create parameter descriptions table if it doesn't exist."""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS parameter_descriptions (
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_parameter_description_id'),
+                parameter_id INTEGER,
+                language TEXT,
+                name TEXT,
+                FOREIGN KEY (parameter_id) REFERENCES parameters(id)
+            );
+        """)
+
+    def _create_parameter_value_descriptions_table(self):
+        """Create parameter value descriptions table if it doesn't exist."""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS parameter_value_descriptions (
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_parameter_value_description_id'),
+                parameter_value_id INTEGER,
+                language TEXT,
+                value TEXT,
+                FOREIGN KEY (parameter_value_id) REFERENCES parameter_values(id)
+            );
+        """)
+
+    def _create_images_table(self):
+        """Create images table if it doesn't exist."""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS images (
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_image_id'),
+                url TEXT
+            );
+        """)
+
+    def _create_parameter_values_table(self):
+        """Create parameter values table if it doesn't exist."""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS parameter_values (
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_parameter_value_id'),
+                position INTEGER,
+                image_id INTEGER,
+                FOREIGN KEY (image_id) REFERENCES images(id)
+            );
+        """)
+
+    def _create_parameters_table(self):
+        """Create parameters table if it doesn't exist."""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS parameters (
+                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_parameter_id'),
+                position INTEGER,
+                display_type TEXT,
+                display_in_product_list_yn BOOLEAN,
+                display_in_product_detail_yn BOOLEAN,
+                display_in_filters_as_slider_yn BOOLEAN,
+                image_id INTEGER,
+                FOREIGN KEY (image_id) REFERENCES images(id)
+            );
+        """)
+
+        self._create_parameter_descriptions_table()
+        self._create_parameter_value_descriptions_table()
+        self._create_images_table()
+        self._create_parameter_values_table()
+        self._create_parameters_table()
+
     def insert_product(self, product_id, code, ean, manufacturer, stock, weight, availability, availability_type, unit,
                     action_currently_yn, active_yn, archived_yn, can_add_to_basket_yn, adult_yn, set_yn, in_set_yn,
                     exclude_from_search_yn):
@@ -343,6 +407,46 @@ class UpgatesDuckDBAPI:
             VALUES (?, ?, ?)
         """, (product_id, country_code, vat_percentage))
     
+    def insert_parameter(self, key, value):
+        """Insert parameter into the parameters table."""
+        self.conn.execute("""
+            INSERT INTO parameters (key, value)
+            VALUES (?, ?)
+        """, (key, value))
+
+    def insert_parameters(self, parameters: list):
+        """Insert multiple parameters into the parameters table."""
+        for parameter in parameters:
+            pass        
+    
+    def insert_parameter_value(self, parameter_id, value):
+        """Insert parameter value into the parameter_values table."""
+        self.conn.execute("""
+            INSERT INTO parameter_values (parameter_id, value)
+            VALUES (?, ?)
+        """, (parameter_id, value))
+
+    def insert_parameter_description(self, parameter_id, language, name):
+        """Insert parameter description into the parameter_descriptions table."""
+        self.conn.execute("""
+            INSERT INTO parameter_descriptions (parameter_id, language, name)
+            VALUES (?, ?, ?)
+        """, (parameter_id, language, name))
+    
+    def insert_parameter_value_description(self, parameter_value_id, language, value):
+        """Insert parameter value description into the parameter_value_descriptions table."""
+        self.conn.execute("""
+            INSERT INTO parameter_value_descriptions (parameter_value_id, language, value)
+            VALUES (?, ?, ?)
+        """, (parameter_value_id, language, value))
+
+    def insert_image(self, url):
+        """Insert image URL into the images table."""
+        self.conn.execute("""
+            INSERT INTO images (url)
+            VALUES (?)
+        """, (url,))
+
     def get_product_fields(self):
         """Show all product fields."""
         query = "PRAGMA table_info(products)"

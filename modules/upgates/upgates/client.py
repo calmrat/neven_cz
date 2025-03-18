@@ -17,7 +17,7 @@ File: upgates/client.py
 
 import aiohttp
 import asyncio
-from flask.cli import F
+#from flask.cli import F
 import logfire
 
 from typing import List, Dict
@@ -27,12 +27,50 @@ from upgates.models.translation import TranslationRequest
 from upgates import config
 from upgates.db.duckdb_api import UpgatesDuckDBAPI
 from upgates.ai import translate_text, TranslationDeps
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 
 def log_sync_statistics(sync_results: Dict[str, List]) -> None:
     """Log the number of each object type saved during sync."""
     stats: Dict[str, int] = {key: len(value) for key, value in sync_results.items()}
     logfire.info(f"Sync completed: {stats}")
+
+# FIXME: MOVE TO MODELS
+class ParameterDescription(BaseModel):
+    language: str
+    name: str
+
+class ParameterValueDescription(BaseModel):
+    language: str
+    value: str
+
+class Image(BaseModel):
+    id: int
+    url: str
+
+class ParameterValue(BaseModel):
+    id: int
+    descriptions: List[ParameterValueDescription]
+    position: int
+    image: Optional[Image] = None
+
+class Parameter(BaseModel):
+    id: int
+    descriptions: List[ParameterDescription]
+    #values: List[str] = Field(default_factory=list)
+    # Added v0.1.3
+    values: List[ParameterValue] = Field(default_factory=list)
+    position: int
+    image: Optional[Dict[str, str]] = None
+    display_type: str
+    display_in_product_list_yn: bool
+    display_in_product_detail_yn: bool
+    display_in_filters_as_slider_yn: bool
+
+class Parameters(BaseModel):
+    parameters: List[Parameter]
+
 
 class UpgatesClient:
     """Async API Client for Upgates with proper syncing, logging, and translations."""
@@ -218,6 +256,40 @@ class UpgatesClient:
             self.db_api.insert_orders(all_orders)
             logfire.info(f"✅ Order sync complete. {len(all_orders)} orders fetched and inserted.")
 
+    async def sync_parameters(self, page_count=None):
+        """Sync parameter data from the API."""
+        logfire.info("ℹ️ Fetching parameter data...")
+        page = 1
+
+        while True:
+            try:
+                parameters_response = await self.fetch_data("parameters", page)
+                if isinstance(parameters_response, dict) and "parameters" in parameters_response:
+                    parameters = parameters_response["parameters"]
+                    if parameters:
+                        logfire.info(f"Fetched {len(parameters)} items from page {page}")
+                        logfire.debug(f"Inserting {len(parameters)} parameters into the database.")
+                        
+                        parameters = Parameters(parameters=[Parameter(**parameter) for parameter in parameters])
+                        
+                        import ipdb; ipdb.set_trace()
+                        self.db_api.insert_parameters(parameters)
+
+                        total_pages = parameters_response.get("number_of_pages", 0)
+                        if page >= total_pages:
+                            logfire.debug(f"✅ All pages fetched. Total pages: {total_pages}")
+                            break
+                        page += 1
+                    else:
+                        logfire.warning(f"⚠️ No parameters found on page {page}.")
+                        break
+                else:
+                    logfire.error(f"❌ Parameters data is missing in response for page {page}.")
+                    break
+            except Exception as e:
+                logfire.warning(f"⚠️ Failed to fetch parameter data: {e} for page {page}")
+                break
+
     async def fetch_data(self, endpoint, page=1, page_count=None):
         """Fetch data from the API with retries and handle pagination with rate-limiting."""
         all_data = []
@@ -253,8 +325,11 @@ class UpgatesClient:
                                 items = data.get('customers', [])
                             case "orders":
                                 items = data.get('orders', [])
+                            case "parameters":
+                                items = data.get('parameters', [])
                             case _:
                                 logfire.error(f"❌ Unexpected endpoint {endpoint}. Aborting.")
+                                import ipdb; ipdb.set_trace()
                                 return [], 0
 
                         return items, data.get('number_of_pages', 1)
@@ -288,19 +363,19 @@ class UpgatesClient:
     async def translate_product(self, product_code: str, target_lang: str, prompt: str) -> TranslationRequest | None:
         target_lang = target_lang.lower()
         prompt = (prompt or "").strip()
-        
-        # Add on additional details about the language; e.g., "cs" for Czech
 
-        logfire.info(f"Starting translation for product '{product_code}' to '{target_lang.upper()}'")
-        logfire.info(f"Prompt Injected: {prompt}")
+        logfire.info(f"Starting translation for product '{product_code}' to '{target_lang}'")
+        logfire.debug(f"Prompt Injected: {prompt or 'None'}")
 
         # Retrieve the product details from DuckDB (assumes a DataFrame is returned)
         product_details = await self.db_api.get_product_details(code=product_code)
 
         if product_details is None:
+            logfire.warning(f"Product '{product_code}' not found in local database.")
             return None
         
         if isinstance(product_details, pd.DataFrame) and product_details.empty:
+            logfire.warning(f"No product details found for '{product_code}' in local database.")
             return None
         
         # Assume the first record represents the product.
@@ -325,18 +400,16 @@ class UpgatesClient:
             logfire.error("Missing title or long description in Czech version.")
             return
 
-        # Build the user prompt for the AI translator.
-        #" * add noted '<br/><h6>This product description was translated with the help of AI.</h6>'\n\n"
-            
         user_prompt = f"""
-        Update all product fields in {target_lang} language based on this context:
-        Product Details:
-        Product code: {product_code}
-        Title: {source_title}
-        Long Description: {source_long}
+        Translate requested fields to {target_lang} language based on:
+        
+         Product code: {product_code}
+         Title: {source_title}
+         Long Description: {source_long}
         """
 
         if prompt:
+            logfire.debug(f"Injecting additional user prompt text: {prompt}")
             user_prompt += f"\n\nAdditionally, {prompt}"
 
         # Call the AI translation function using pydantic AI run()
@@ -362,7 +435,7 @@ class UpgatesClient:
         return ai_result
 
     async def save_translation(self, product_code: str, target_lang: str = "cz"):
-        target_lang = target_lang.lower()
+        target_lang = target_lang.lower().strip()
         logfire.info(f"Saving '{target_lang}' translations for product '{product_code}' back to Upgates.cz API")
 
         product_details = await self.db_api.get_product_details(product_code)
@@ -370,11 +443,12 @@ class UpgatesClient:
             logfire.error(f"Product '{product_code}' not found in local database.")
             return
 
-        # For this example, assume that the updated (translated) description is stored
-        # in the product’s descriptions for a non-CZ language.
         product = product_details.iloc[0]
         descriptions = product.get("descriptions", [])
-        desc_matched = [d for d in descriptions if d.get("language").lower() == target_lang]
+        if not descriptions:
+            logfire.error("No descriptions found for the product.")
+            return
+        desc_matched = [d for d in descriptions if d.get("language").lower().strip() == target_lang.lower().strip()]
         translations = desc_matched[0] if desc_matched else None
         
         if not translations:
@@ -416,5 +490,7 @@ class UpgatesClient:
                         logfire.error(f"Failed to save translations. Status: {resp.status} - {error_text}")
         except Exception as e:
             logfire.error(f"Error while saving translations: {e}")
+        else:
+            logfire.info("✅ Translation saved successfully. Response: {resp}")
 
 # EOF

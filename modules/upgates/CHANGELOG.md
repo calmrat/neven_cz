@@ -2,12 +2,16 @@
 
 ## v0.1.3 (Latest - In Progress)
 ### Added
+- Changelog :) Backfilled previous releases.
+- Results validators to pydantic ai classes to ensure fields are filled.
+- Improved loggings; added more logfire debug/info calls in upgates.
 - Support for dynamically selecting target languages.
-- Added Changelog
+- CLI: upgates sync-parameters
   
 ### Fixed
-- Resolved issues with data synchronization.
-- Fixed application crash on startup.
+- Bug: Multiple ssues with data synchronization.
+- Bug: Application crash on startup.
+- Bug: Double translating product due to invalid arguments
 
 ---
 

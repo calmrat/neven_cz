@@ -122,6 +122,18 @@ def sync_orders(clear_cache, page_count):
     client = UpgatesClient()
     asyncio.run(client.sync_orders(page_count=page_count))
 
+@click.command(name="sync-parameters")
+@click.option('--clear-cache', is_flag=True, help="Clear the cache before syncing.")
+@click.option('--page-count', default=None, type=int, help="Number of pages to fetch. Default is all pages.")
+def sync_parameters(clear_cache, page_count):
+    """Show all parameters."""
+    if clear_cache:
+        _clear_cache()  # Ensure clear_cache is called if the flag is set
+    client = UpgatesClient()
+    asyncio.run(client.sync_parameters(page_count=page_count))
+
+# --
+
 @click.command()
 @click.option('--page-count', default=None, type=int, help="Number of pages to fetch. Default is all pages.")
 def sync_all(page_count):
@@ -154,16 +166,23 @@ def translate_product(product_code, target_lang, prompt, save, update):
     client = UpgatesClient()
     try:
         asyncio.run(client.translate_product(product_code, target_lang, prompt))
+        console.print(f"✅ Translation completed for product: {product_code}")
     except ValueError as e:
         console.print(f"❌ Translation failed: {e}")
         return
+    
+    console.print(f"🔍 Searching for product: {product_code}")
     search_product.callback(product_code, "json", target_lang, False, list())
+    
     if save:
-        save_translation.callback(product_code, target_lang, update)
+        console.print(f"💾 Saving translation for product: {product_code}")
+        # Save the translation back to Upgates.cz API but avoid updating the product again
+        save_translation.callback(product_code, target_lang, False)
+        console.print(f"✅ Translation saved for product: {product_code}")
 
 # CMD: Save Translation
 @click.command()
-@click.option("--update", is_flag=True, default=False, help="Update the product translations before saving.")
+@click.option("--update", is_flag=False, default=False, help="Update the product translations before saving.")
 @click.argument("product_code")
 @click.argument("target_lang")
 def save_translation(product_code, target_lang, update):
@@ -173,7 +192,6 @@ def save_translation(product_code, target_lang, update):
         empty_prompt = ""
         asyncio.run(client.translate_product(product_code, target_lang, empty_prompt))
     asyncio.run(client.save_translation(product_code, target_lang))
-
 
 @click.command()
 @click.argument("product_code")
@@ -237,10 +255,6 @@ def show_products(embed):
 
     if embed:
         IPython.embed()
-    
-    
-
-
 
 @click.command(name="show-customers")
 def show_customers():
@@ -257,6 +271,15 @@ def show_orders():
     db_file = config.default_db_path
     conn = duckdb.connect(db_file)
     df = conn.execute("SELECT * FROM orders").fetchdf()
+    conn.close()
+    console.print(df.head())
+
+@click.command(name="show-parameters")
+def show_parameters():
+    """Show all parameters."""
+    db_file = config.default_db_path
+    conn = duckdb.connect(db_file)
+    df = conn.execute("SELECT * FROM parameters").fetchdf()
     conn.close()
     console.print(df.head())
 
@@ -281,9 +304,11 @@ cli.add_command(sync_all)
 cli.add_command(sync_products)
 cli.add_command(sync_customers)
 cli.add_command(sync_orders)
+cli.add_command(sync_parameters)
 cli.add_command(search_product)
 cli.add_command(show_products)
 cli.add_command(show_customers)
+cli.add_command(show_parameters)
 cli.add_command(show_orders)
 cli.add_command(clear_cache)
 

@@ -11,12 +11,12 @@ The async function translate_text() runs the agent and returns the validated dat
 
 import os
 
-from datetime import datetime 
-
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
-from pydantic_ai import Agent
+from pydantic import BaseModel, Field, field_validator
+from pydantic_ai import Agent, RunContext, ModelRetry
+
+import logfire
 
 from upgates import config
 
@@ -27,6 +27,9 @@ if config.openai_enabled:
 else:
     raise NotImplementedError("OpenAI API key is required for translation.")
 
+
+# #FIXME: load from config
+valid_target_languages = ('cz', 'cs', 'sk')
 
 # Define the result model for translation.
 class TranslationResult(BaseModel):
@@ -39,38 +42,55 @@ class TranslationResult(BaseModel):
     seo_keywords: str = Field(..., description="REQUIRED: SEO-friendly list (csv) of keywords for the product.", title="SEO Keywords")
     seo_url: str = Field(..., description="SEO-friendly (relative page) URL for the product.", title="SEO URL")
     unit: str = Field(..., description="The unit of measurement for the product. (default 'ks' if unsure)", title="Unit")
-    error: str = Field(..., description="Error message if transformation failed.", title="Error")
-    error_code: int = Field(0, description="Error code if transformation failed. 200 OK, 400 ERROR", title="Error Code")
+    error: str = Field(..., description="Error message if transformation failed or empty.", title="Error")
+    return_code: int = Field(0, description="Return status code. [200 SUCCESS, 400 ERROR]", title="Error Code")
+    
+    @staticmethod
+    def migrate_language_code(value: str) -> str:
+        """ 
+        Updates.cz uses 'cz' instead of 'cs' for Czech language. 
+        Migrate language codes to new format. 
+        """
+        logfire.info (f"migrate_language_code: {value}")
+        value = str(value).strip().lower()
+        value = 'cz' if value == 'cs' else value
+        return value
 
+    @field_validator('target_language', mode='after')
+    @classmethod
+    def is_valid_target_language(cls, value: str) -> str:
+        logfire.info (f"is_valid_target_language: {value}")
+        value = str(value).strip().lower()
+        value = cls.migrate_language_code(value)
+        #import ipdb; ipdb.set_trace()
+        if value not in valid_target_languages:
+            raise ValueError(f'❌ {value} is not a valid target language. Expecting: {valid_target_languages}')
+        return value
+    
 # Define the dependency dataclass for translation.
 @dataclass
 class TranslationDeps:
    ''' Translation dependencies '''
-   pass
+   valid_target_languages: tuple | list = valid_target_languages
 
 # Update the agent to use the default model from config
 target_model = config.openai_default_model
 
 system_prompt = """
-    You are a multi-lingual translator and an clean html expert.
+    You are a multi-lingual translator.
+    * Some product names are in English, and they are not intended to be translated.
+    * You remain true to the original technical meaning of the text, but your tone is nuanced for the target language.
+    * You offer metric, imperial, US measurements for products, when relevant.
     
-    Special instructurions for "Long Description" field:
-    * write clean, well formatted HTML : p, span, h2, h2, h3, h4, h5, h6, b, i, em, strong, img, table, ul, ol, li, br
-    * no inline styles, no inline scripts, no inline JS.
-    * <img>: Set width to 600px, if larger (max). Remove img height attribute. Add accessibility alt-tags.
-    
-    You recognize that sometimes there are product names in English, which are not intended to be translated.
-    * You try to remain true to the original meaning (technical) of the text, nuanced for the target language.
-    * Offer Metric and Imperial/US measurements for products too, if applicable.
-    
-    You always update the following fields with the latest/best version of translated product field values:
-    title, short_description, long_description, seo_description, seo_title, seo_keywords, seo_url, unit
+    Special instructions for "Long Description" field:
+    * clean HTML, with only: p, span, h2, h3, h4, b, i, em, strong, img, table, ul, ol, li, br
+    * No inline styles, no inline scripts, no inline JS.
+    * No <center> tags. Clean up empty and invalid tags.
+    * <img>: Set width to 600px, if larger than this max size. Remove img height attribute.
+    * Add accessibility tags (alt).
     """.strip()
 
-#    Finally, add or update this note, translated to target language: 
-#    '<br/><h6>[TARGET_LANG] Translation updated on [TODAY: {datetime.now().strftime('%B %d, %Y')}] [{config.ai_model}]</h6>'\n\n
-
-# Instantiate the official pydantic_ai.Agent.
+# Instantiate the Translator Agent
 agent_translator = Agent(
     target_model,
     result_type=TranslationResult,
@@ -78,6 +98,22 @@ agent_translator = Agent(
     system_prompt=system_prompt,
     retries=config.openai_default_retries,
 )
+
+@agent_translator.result_validator
+async def validate_target_language(ctx: RunContext[TranslationDeps], result: TranslationResult) -> TranslationResult:
+    ''' Validate the translation result '''
+    logfire.info (f"validate_target_language: {result.target_language}")
+    if result.target_language not in ctx.deps.valid_target_languages:
+        raise ModelRetry(f'Invalid Target Language: {result.target_language}. Expected: {valid_target_languages}')
+    return result
+
+@agent_translator.result_validator
+async def validate_fields_are_not_empty(ctx: RunContext[TranslationDeps], result: TranslationResult) -> TranslationResult:
+    ''' Validate that our main fields are not empty '''
+    logfire.info (f"validate_fields_are_not_empty: {result}")
+    if "" in (x.strip() for x in (result.target_language, result.title, result.short_description, result.long_description, result.seo_description, result.seo_title, result.seo_keywords, result.seo_url, result.unit)):
+        raise ModelRetry(f'No values should be empty! Got {result}')
+    return result
 
 
 async def translate_text(user_prompt: str, deps: TranslationDeps) -> TranslationResult:
