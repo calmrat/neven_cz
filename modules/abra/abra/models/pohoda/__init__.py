@@ -71,14 +71,15 @@ Usage:
     )
 """
 
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 
 class PaymentType(BaseModel):
     paymentType: str
+
 
 class Address(BaseModel):
     company: str
@@ -93,9 +94,11 @@ class Address(BaseModel):
     www: Optional[str] = None
     country: Optional[str] = None
 
+
 class Identity(BaseModel):
     address: Address
     shipToAddress: Optional[Address] = None
+
 
 class InvoiceHeader(BaseModel):
     invoiceType: str
@@ -119,14 +122,18 @@ class InvoiceHeader(BaseModel):
     note: Optional[str] = None
     intNote: Optional[str] = None
 
+
 class HomeCurrency(BaseModel):
     unitPrice: float
+
 
 class ForeignCurrency(BaseModel):
     unitPrice: float
 
+
 class StockItem(BaseModel):
     ids: Optional[str] = None
+
 
 class InvoiceItem(BaseModel):
     text: str
@@ -140,8 +147,10 @@ class InvoiceItem(BaseModel):
     foreignCurrency: Optional[ForeignCurrency] = None
     stockItem: Optional[StockItem] = None
 
+
 class InvoiceDetail(BaseModel):
     invoiceItems: Optional[List[InvoiceItem]] = None
+
 
 class InvoiceSummaryHomeCurrency(BaseModel):
     priceHigh: float
@@ -149,17 +158,21 @@ class InvoiceSummaryHomeCurrency(BaseModel):
     priceHighSum: float
     priceNone: float
 
+
 class InvoiceSummaryForeignCurrencyCurrency(BaseModel):
     ids: str
+
 
 class InvoiceSummaryForeignCurrency(BaseModel):
     currency: InvoiceSummaryForeignCurrencyCurrency
     rate: float
 
+
 class InvoiceSummary(BaseModel):
     roundingDocument: Optional[str] = None
     homeCurrency: InvoiceSummaryHomeCurrency
     foreignCurrency: InvoiceSummaryForeignCurrency
+
 
 class Invoice(BaseModel):
     version: str
@@ -167,8 +180,10 @@ class Invoice(BaseModel):
     invoiceDetail: InvoiceDetail
     invoiceSummary: InvoiceSummary
 
+
 class Invoices(BaseModel):
     invoices: List[Invoice]
+
 
 if __name__ == "__main__":
     pass

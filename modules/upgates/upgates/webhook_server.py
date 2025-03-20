@@ -27,7 +27,8 @@ from upgates.client import UpgatesClient
 app = Flask(__name__)
 client = UpgatesClient()
 
-@app.route('/webhook', methods=['POST'])
+
+@app.route("/webhook", methods=["POST"])
 def webhook():
     """Webhook for real-time Upgates updates."""
     data = request.json
@@ -45,5 +46,6 @@ def webhook():
 
     return jsonify({"status": "success"}), 200
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

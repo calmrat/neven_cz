@@ -8,14 +8,15 @@ This script provides CLI for managing the Neven.cz Project.
 - creating a ZIP archive of the current Git repository.
 """
 
-import click
+import os
 import subprocess
 from datetime import datetime
-import dotenv
-import os
-
-from typing import List
 from pathlib import Path
+from typing import List
+
+import click
+import dotenv
+
 
 def expand_home(path) -> Path:
     """
@@ -25,6 +26,7 @@ def expand_home(path) -> Path:
     :return: A string path with the ~ symbol expanded to the user's home directory.
     """
     return Path(os.path.expanduser(Path(path)))
+
 
 def make_dirs(paths: List[Path]) -> int:
     """
@@ -45,32 +47,40 @@ def make_dirs(paths: List[Path]) -> int:
             click.echo(f"Failed to create directory {path}: {e}", err=True)
             return 1
 
+
 # Load environment variables from .env file
-env_path = Path(os.path.join(os.path.dirname(__file__), '../.env'))
+env_path = Path(os.path.join(os.path.dirname(__file__), "../.env"))
 dotenv.load_dotenv(dotenv_path=env_path)
 
 # Get the value of NEVEN_PATH from the environment
-neven_path = expand_home(os.getenv('NEVEN_PATH'))
+neven_path = expand_home(os.getenv("NEVEN_PATH"))
 
-data_path = neven_path / Path('data')
-output_path = data_path / Path('output')
-repo_archive_path = output_path / Path('repo_archive')
+data_path = neven_path / Path("data")
+output_path = data_path / Path("output")
+repo_archive_path = output_path / Path("repo_archive")
 
 sys_paths = [neven_path, data_path, repo_archive_path, output_path]
 
 # Create directories if they do not exist
 make_dirs(sys_paths)
 
-#import abra
-#import upgates
+
+# import abra
+# import upgates
 @click.group()
 def cli():
     pass
 
-@click.command()
-@click.option('--output-path', default=repo_archive_path, help='Output path for the ZIP file.')
-@click.option('--output-filename', default=f'neven_cz-{datetime.now().strftime('%d%m%y%H%M%S')}.zip', help='Output ZIP file name.')
 
+@click.command()
+@click.option(
+    "--output-path", default=repo_archive_path, help="Output path for the ZIP file."
+)
+@click.option(
+    "--output-filename",
+    default=f"neven_cz-{datetime.now().strftime('%d%m%y%H%M%S')}.zip",
+    help="Output ZIP file name.",
+)
 def zip_repo(output_path, output_filename):
     """
     Create a ZIP archive of the current Git repository.
@@ -81,14 +91,14 @@ def zip_repo(output_path, output_filename):
     path = Path(output_path) / output_filename
     try:
         subprocess.run(
-            ['git', 'archive', '--format=zip', '--output', path, 'HEAD'],
-            check=True
+            ["git", "archive", "--format=zip", "--output", path, "HEAD"], check=True
         )
         click.echo(f"Repository archived successfully to {path}")
     except subprocess.CalledProcessError as e:
         click.echo(f"Failed to archive repository: {e}", err=True)
 
+
 cli.add_command(zip_repo)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

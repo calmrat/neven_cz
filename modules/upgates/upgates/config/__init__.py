@@ -11,18 +11,17 @@ File:
     abra/config/__init__.py
 """
 
-import os
 import logging
-
-import logfire
-
+import os
 from pathlib import Path
 
+import logfire
 from dotenv import load_dotenv
+
 
 # Define helper functions
 def expand_home(path):
-    ''' Expand the user's home directory in a given path. '''
+    """Expand the user's home directory in a given path."""
     if not path:
         path = Path.home()
     else:
@@ -30,14 +29,15 @@ def expand_home(path):
         path = os.path.expanduser(path)
     return Path(path)
 
+
 def init_dirs(paths) -> int:
-    ''' Create directories if they do not exist. '''
+    """Create directories if they do not exist."""
     for path in paths:
         path = expand_home(path)
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
 
-    return 1 # success
+    return 1  # success
 
 
 # Load environment variables
@@ -45,11 +45,13 @@ load_dotenv()
 
 # Python Logging
 logging_enabled = os.getenv("LOGGING_ENABLED", "").lower() in ("1", "true")
-logging_level = os.getenv("LOGGING_LEVEL", "").lower() or 'info'
+logging_level = os.getenv("LOGGING_LEVEL", "").lower() or "info"
 
 # Logfire Logging
 logfire_enabled = os.getenv("LOGFIRE_ENABLED", "").lower() in ("1", "true")
-logfire_consoloe_min_log_level = os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL").lower() or 'info'
+logfire_consoloe_min_log_level = (
+    os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL").lower() or "info"
+)
 logfire_project = os.getenv("LOGFIRE_PROJECT", "neven-agents")
 
 # CLI Settings
@@ -88,7 +90,15 @@ cache_path = data_path / "cache"
 db_file = __name__.split(".")[0] + ".db"
 default_db_path = db_path / db_file
 
-sys_dirs = [neven_path, data_path, input_path, output_path, logs_path, db_path, cache_path]
+sys_dirs = [
+    neven_path,
+    data_path,
+    input_path,
+    output_path,
+    logs_path,
+    db_path,
+    cache_path,
+]
 
 # Ensure default data path and subdirectories exist
 init_dirs(sys_dirs)
@@ -98,11 +108,11 @@ logger = None
 debug_msg = "🟡 Debug mode is enabled."
 info_msg = "🟠 Info mode is enabled."
 
-if logging_enabled:    
+if logging_enabled:
     # Setup Logging
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     logger = logging.getLogger(__name__)
-    # logger.propagate = False 
+    # logger.propagate = False
 
     if logging_level.lower() == "debug":
         logger.setLevel(logging.DEBUG)
@@ -118,13 +128,11 @@ if logfire_enabled:
         os.environ["LOGFIRE_CONSOLE_MIN_LOG_LEVEL"] = "info" if not value else value
 
     logfire.configure()
-    
+
     if logfire_consoloe_min_log_level.lower() == "debug":
         logfire.debug(f"LOGFIRE: {info_msg}")
     else:
         logfire.info(f"LOGFIRE: {info_msg}")
-
-
 
 
 # Log paths

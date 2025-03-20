@@ -16,9 +16,9 @@ File: /Users/cward/Repos/neven_cz/modules/upgates/upgates/db/duckdb_api.py
 """
 
 import os
+
 import duckdb
 import logfire
-
 import pandas as pd
 
 from upgates import config
@@ -62,31 +62,37 @@ class UpgatesDuckDBAPI:
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_customer_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_order_id START 1;")
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_id START 1;")
-        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_description_id START 1;")
-        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_value_id START 1;")
-        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_parameter_value_description_id START 1;")
+        self.conn.execute(
+            "CREATE SEQUENCE IF NOT EXISTS seq_parameter_description_id START 1;"
+        )
+        self.conn.execute(
+            "CREATE SEQUENCE IF NOT EXISTS seq_parameter_value_id START 1;"
+        )
+        self.conn.execute(
+            "CREATE SEQUENCE IF NOT EXISTS seq_parameter_value_description_id START 1;"
+        )
         self.conn.execute("CREATE SEQUENCE IF NOT EXISTS seq_image_id START 1;")
 
         # Check if the database and tables exist before creating
-        if not self._check_table_exists('products'):
+        if not self._check_table_exists("products"):
             self._create_products_table()
-        if not self._check_table_exists('customers'):
+        if not self._check_table_exists("customers"):
             self._create_customers_table()
-        if not self._check_table_exists('orders'):
+        if not self._check_table_exists("orders"):
             self._create_orders_table()
-        if not self._check_table_exists('descriptions'):
+        if not self._check_table_exists("descriptions"):
             self._create_descriptions_table()
-        if not self._check_table_exists('prices'):
+        if not self._check_table_exists("prices"):
             self._create_prices_table()
-        if not self._check_table_exists('images'):
+        if not self._check_table_exists("images"):
             self._create_images_table()
-        if not self._check_table_exists('categories'):
+        if not self._check_table_exists("categories"):
             self._create_categories_table()
-        if not self._check_table_exists('metas'):
+        if not self._check_table_exists("metas"):
             self._create_metas_table()
-        if not self._check_table_exists('vats'):
+        if not self._check_table_exists("vats"):
             self._create_vats_table()
-        if not self._check_table_exists('parameters'):
+        if not self._check_table_exists("parameters"):
             self._create_parameters_table()
 
         logfire.debug("DuckDB tables initialized.")
@@ -126,7 +132,9 @@ class UpgatesDuckDBAPI:
                 exclude_from_search_yn BOOLEAN
             );
         """)
-        logfire.debug(f"Product table created: {self.conn.execute('DESCRIBE products').fetchall()}")
+        logfire.debug(
+            f"Product table created: {self.conn.execute('DESCRIBE products').fetchall()}"
+        )
 
     def _create_customers_table(self):
         """Create customers table if it doesn't exist."""
@@ -315,11 +323,29 @@ class UpgatesDuckDBAPI:
         self._create_parameter_values_table()
         self._create_parameters_table()
 
-    def insert_product(self, product_id, code, ean, manufacturer, stock, weight, availability, availability_type, unit,
-                    action_currently_yn, active_yn, archived_yn, can_add_to_basket_yn, adult_yn, set_yn, in_set_yn,
-                    exclude_from_search_yn):
+    def insert_product(
+        self,
+        product_id,
+        code,
+        ean,
+        manufacturer,
+        stock,
+        weight,
+        availability,
+        availability_type,
+        unit,
+        action_currently_yn,
+        active_yn,
+        archived_yn,
+        can_add_to_basket_yn,
+        adult_yn,
+        set_yn,
+        in_set_yn,
+        exclude_from_search_yn,
+    ):
         """Insert product data into the products table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO products (product_id, code, ean, manufacturer, stock, weight, availability, availability_type, unit,
                                 action_currently_yn, active_yn, archived_yn, can_add_to_basket_yn, adult_yn, set_yn, in_set_yn, exclude_from_search_yn)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -331,127 +357,217 @@ class UpgatesDuckDBAPI:
                 archived_yn = excluded.archived_yn, can_add_to_basket_yn = excluded.can_add_to_basket_yn,
                 adult_yn = excluded.adult_yn, set_yn = excluded.set_yn, in_set_yn = excluded.in_set_yn,
                 exclude_from_search_yn = excluded.exclude_from_search_yn
-        """, (
-            product_id, code, ean, manufacturer, stock, weight, availability, availability_type, unit,
-            action_currently_yn, active_yn, archived_yn, can_add_to_basket_yn, adult_yn, set_yn, in_set_yn,
-            exclude_from_search_yn
-        ))
+        """,
+            (
+                product_id,
+                code,
+                ean,
+                manufacturer,
+                stock,
+                weight,
+                availability,
+                availability_type,
+                unit,
+                action_currently_yn,
+                active_yn,
+                archived_yn,
+                can_add_to_basket_yn,
+                adult_yn,
+                set_yn,
+                in_set_yn,
+                exclude_from_search_yn,
+            ),
+        )
         # Debug output the count of products
-        #product_count = self.conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
-        #logfire.debug(f"Added Product ID {product_id}\nTotal number of products: {product_count}")
-        
-    def insert_product_description(self, product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit):
+        # product_count = self.conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        # logfire.debug(f"Added Product ID {product_id}\nTotal number of products: {product_count}")
+
+    def insert_product_description(
+        self,
+        product_id,
+        language,
+        title,
+        short_description,
+        long_description,
+        url,
+        seo_title,
+        seo_description,
+        seo_url,
+        seo_keywords,
+        unit,
+    ):
         """Insert product descriptions into the descriptions table."""
         # Czech language code is 'cz' in the database
         language = language.lower()
-        language = 'cz' if language == 'cs' else language
+        language = "cz" if language == "cs" else language
 
-        seo_keywords = ', '.join(seo_keywords) if seo_keywords else ""
+        seo_keywords = ", ".join(seo_keywords) if seo_keywords else ""
 
         try:
-            self.conn.execute("""
+            self.conn.execute(
+                """
                 INSERT INTO descriptions (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (product_id, language, title, short_description, long_description, url, seo_title, seo_description, seo_url, seo_keywords, unit))
+            """,
+                (
+                    product_id,
+                    language,
+                    title,
+                    short_description,
+                    long_description,
+                    url,
+                    seo_title,
+                    seo_description,
+                    seo_url,
+                    seo_keywords,
+                    unit,
+                ),
+            )
         except duckdb.duckdb.ConstraintException as e:
-            logfire.debug(f"❌ Failed to insert description for product {product_id}: {e}")
-            #import ipdb; ipdb.set_trace()
+            logfire.debug(
+                f"❌ Failed to insert description for product {product_id}: {e}"
+            )
+            # import ipdb; ipdb.set_trace()
 
     def insert_product_price(self, product_id, currency, price_with_vat):
         """Insert price data into the prices table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO prices (product_id, currency, price_with_vat)
             VALUES (?, ?, ?)
-        """, (product_id, currency, price_with_vat))
+        """,
+            (product_id, currency, price_with_vat),
+        )
 
     def insert_product_image(self, product_id, file_id, url, main_yn, position):
         """Insert image data into the images table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO images (product_id, file_id, url, main_yn, position)
             VALUES (?, ?, ?, ?, ?)
-        """, (product_id, file_id, url, main_yn, position))
+        """,
+            (product_id, file_id, url, main_yn, position),
+        )
 
-    def insert_product_category(self, product_id, category_id, category_code, category_name, main_yn, position):
+    def insert_product_category(
+        self, product_id, category_id, category_code, category_name, main_yn, position
+    ):
         """Insert category data into the categories table, skipping duplicates."""
         try:
             # Check if the category_id already exists
-            existing_category = self.conn.execute("""
+            existing_category = self.conn.execute(
+                """
                 SELECT 1 FROM categories WHERE category_id = ? and product_id = ?
-            """, (category_id, product_id)).fetchone()
-            #print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
+            """,
+                (category_id, product_id),
+            ).fetchone()
+            # print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
             if existing_category:
-                #logfire.debug(f"⚠️ Category with ID {category_id} already exists. Skipping insert.")
+                # logfire.debug(f"⚠️ Category with ID {category_id} already exists. Skipping insert.")
                 return
             else:
                 # Insert category if it doesn't exist
-                self.conn.execute("""
+                self.conn.execute(
+                    """
                     INSERT INTO categories (product_id, category_id, category_code, category_name, main_yn, position)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (product_id, category_id, category_code, category_name, main_yn, position))
-                logfire.debug(f"✅ Category with ID {category_id} inserted successfully.")
+                """,
+                    (
+                        product_id,
+                        category_id,
+                        category_code,
+                        category_name,
+                        main_yn,
+                        position,
+                    ),
+                )
+                logfire.debug(
+                    f"✅ Category with ID {category_id} inserted successfully."
+                )
 
         except Exception as e:
             logfire.error(f"❌ Failed to insert category {category_id}: {e}")
 
     def insert_product_meta(self, product_id, meta_key, meta_type, meta_value):
         """Insert metadata into the metas table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO metas (product_id, meta_key, meta_type, meta_value)
             VALUES (?, ?, ?, ?)
-        """, (product_id, meta_key, meta_type, meta_value))
+        """,
+            (product_id, meta_key, meta_type, meta_value),
+        )
 
     def insert_product_vat(self, product_id, country_code, vat_percentage):
         """Insert VAT details into the vats table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO vats (product_id, country_code, vat_percentage)
             VALUES (?, ?, ?)
-        """, (product_id, country_code, vat_percentage))
-    
+        """,
+            (product_id, country_code, vat_percentage),
+        )
+
     def insert_parameter(self, key, value):
         """Insert parameter into the parameters table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO parameters (key, value)
             VALUES (?, ?)
-        """, (key, value))
+        """,
+            (key, value),
+        )
 
     def insert_parameters(self, parameters: list):
         """Insert multiple parameters into the parameters table."""
         for parameter in parameters:
-            pass        
-    
+            pass
+
     def insert_parameter_value(self, parameter_id, value):
         """Insert parameter value into the parameter_values table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO parameter_values (parameter_id, value)
             VALUES (?, ?)
-        """, (parameter_id, value))
+        """,
+            (parameter_id, value),
+        )
 
     def insert_parameter_description(self, parameter_id, language, name):
         """Insert parameter description into the parameter_descriptions table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO parameter_descriptions (parameter_id, language, name)
             VALUES (?, ?, ?)
-        """, (parameter_id, language, name))
-    
+        """,
+            (parameter_id, language, name),
+        )
+
     def insert_parameter_value_description(self, parameter_value_id, language, value):
         """Insert parameter value description into the parameter_value_descriptions table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO parameter_value_descriptions (parameter_value_id, language, value)
             VALUES (?, ?, ?)
-        """, (parameter_value_id, language, value))
+        """,
+            (parameter_value_id, language, value),
+        )
 
     def insert_image(self, url):
         """Insert image URL into the images table."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO images (url)
             VALUES (?)
-        """, (url,))
+        """,
+            (url,),
+        )
 
     def get_product_fields(self):
         """Show all product fields."""
         query = "PRAGMA table_info(products)"
         results = self.conn.execute(query).fetchdf()
-        fields = ', '.join(results['name'].tolist())
+        fields = ", ".join(results["name"].tolist())
         return fields
 
     def get_product_code_by_id(self, product_id: str) -> int:
@@ -462,7 +578,7 @@ class UpgatesDuckDBAPI:
         query = "SELECT code FROM products WHERE product_id = ?"
         result = self.conn.execute(query, (product_id,)).fetchone()
         return result[0] if result else None
-    
+
     def get_product_id_by_code(self, code: str) -> int:
         """
         Retrieves the product_id for the given product code.
@@ -471,7 +587,7 @@ class UpgatesDuckDBAPI:
         query = "SELECT product_id FROM products WHERE code = ?"
         result = self.conn.execute(query, (code,)).fetchone()
         return result[0] if result else None
-    
+
     def get_product_core(self, product_id=None):
         logfire.debug(f"Fetching product core details for product_id: {product_id}")
         query = """
@@ -546,11 +662,11 @@ class UpgatesDuckDBAPI:
         if product_id:
             query += " WHERE c.product_id = ? "
             parameters.append(product_id)
-        
+
         result = self.conn.execute(query, parameters).fetchdf()
-        
-        #import ipdb; ipdb.set_trace()
-        
+
+        # import ipdb; ipdb.set_trace()
+
         return result
 
     def get_product_vat(self, product_id=None):
@@ -565,7 +681,7 @@ class UpgatesDuckDBAPI:
         if product_id:
             query += " WHERE v.product_id = ? "
             parameters.append(product_id)
-        
+
         result = self.conn.execute(query, parameters).fetchdf()
         return result
 
@@ -589,7 +705,7 @@ class UpgatesDuckDBAPI:
         if product_id:
             query += " WHERE d.product_id = ? "
             parameters.append(product_id)
-        
+
         result = self.conn.execute(query, parameters).fetchdf()
         return result
 
@@ -602,26 +718,35 @@ class UpgatesDuckDBAPI:
         if not pids:
             logfire.info("No product ids found.")
             return pd.DataFrame()
-        
+
         products = [
-            (self.get_product_core(pid[0]),
-            self.get_product_images(pid[0]),
-            self.get_product_prices(pid[0]),
-            self.get_product_categories(pid[0]),
-            self.get_product_vat(pid[0]),
-            self.get_product_descriptions(pid[0])) 
-        for pid in pids]
+            (
+                self.get_product_core(pid[0]),
+                self.get_product_images(pid[0]),
+                self.get_product_prices(pid[0]),
+                self.get_product_categories(pid[0]),
+                self.get_product_vat(pid[0]),
+                self.get_product_descriptions(pid[0]),
+            )
+            for pid in pids
+        ]
 
         logfire.info(f"Found {len(products)} products.")
         return products
 
-    async def get_product_details(self, code=None, product_id=None) -> pd.DataFrame | None:
+    async def get_product_details(
+        self, code=None, product_id=None
+    ) -> pd.DataFrame | None:
         """Show all products with aggregated details from separate queries."""
-        logfire.info(f"Fetching product details for code, product_id: {code}, {product_id}")
+        logfire.info(
+            f"Fetching product details for code, product_id: {code}, {product_id}"
+        )
 
         if (code and product_id) or (not (code or product_id)):
-            raise ValueError("Provide either code or product_id, never neither nor both.")
-        
+            raise ValueError(
+                "Provide either code or product_id, never neither nor both."
+            )
+
         if code and not product_id:
             query = "SELECT product_id FROM products WHERE code = ?"
             params = [code]
@@ -641,11 +766,31 @@ class UpgatesDuckDBAPI:
 
         combined = core.copy()
 
-        combined['images'] = images.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
-        combined['prices'] = prices.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
-        combined['categories'] = categories.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
-        combined['vat'] = vat.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
-        combined['descriptions'] = descriptions.groupby('product_id').apply(lambda x: x.to_dict(orient='records')).reset_index(drop=True)
+        combined["images"] = (
+            images.groupby("product_id")
+            .apply(lambda x: x.to_dict(orient="records"))
+            .reset_index(drop=True)
+        )
+        combined["prices"] = (
+            prices.groupby("product_id")
+            .apply(lambda x: x.to_dict(orient="records"))
+            .reset_index(drop=True)
+        )
+        combined["categories"] = (
+            categories.groupby("product_id")
+            .apply(lambda x: x.to_dict(orient="records"))
+            .reset_index(drop=True)
+        )
+        combined["vat"] = (
+            vat.groupby("product_id")
+            .apply(lambda x: x.to_dict(orient="records"))
+            .reset_index(drop=True)
+        )
+        combined["descriptions"] = (
+            descriptions.groupby("product_id")
+            .apply(lambda x: x.to_dict(orient="records"))
+            .reset_index(drop=True)
+        )
         return combined
 
     def get_customer_details(self) -> pd.DataFrame:
@@ -684,20 +829,26 @@ class UpgatesDuckDBAPI:
                     product_id = (SELECT product_id FROM products WHERE code = ?)
                     AND language = LOWER(?)
             """
-            self.conn.execute(query, (
-                translations.get("title"),
-                translations.get("long_description"),
-                translations.get("short_description"),
-                translations.get("url"),
-                translations.get("seo_keywords"),
-                translations.get("seo_description"),
-                translations.get("seo_title"),
-                translations.get("seo_url"),
-                translations.get("unit"),
-                product_code,
-                translations.get("target_language")
-            ))
+            self.conn.execute(
+                query,
+                (
+                    translations.get("title"),
+                    translations.get("long_description"),
+                    translations.get("short_description"),
+                    translations.get("url"),
+                    translations.get("seo_keywords"),
+                    translations.get("seo_description"),
+                    translations.get("seo_title"),
+                    translations.get("seo_url"),
+                    translations.get("unit"),
+                    product_code,
+                    translations.get("target_language"),
+                ),
+            )
         except Exception as e:
-            logfire.error(f"Failed to update translation for product '{product_code}' in DuckDB: \nERROR: {e}")
+            logfire.error(
+                f"Failed to update translation for product '{product_code}' in DuckDB: \nERROR: {e}"
+            )
+
 
 # EOF

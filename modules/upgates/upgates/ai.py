@@ -10,68 +10,108 @@ The async function translate_text() runs the agent and returns the validated dat
 """
 
 import os
-
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field, field_validator
-from pydantic_ai import Agent, RunContext, ModelRetry
-
 import logfire
+from pydantic import BaseModel, Field, field_validator
+from pydantic_ai import Agent, ModelRetry, RunContext
 
 from upgates import config
 
 # Ensure OpenAI API key is loaded in environment
 if config.openai_enabled:
     # Ensure OpenAI API key is loaded in environment
-    os.environ['OPENAI_API_KEY'] = config.openai_api_key
+    os.environ["OPENAI_API_KEY"] = config.openai_api_key
 else:
     raise NotImplementedError("OpenAI API key is required for translation.")
 
 
 # #FIXME: load from config
-valid_target_languages = ('cz', 'cs', 'sk')
+valid_target_languages = ("cz", "cs", "sk")
+
 
 # Define the result model for translation.
 class TranslationResult(BaseModel):
-    target_language: str = Field(..., description="The target language for translation.", title="Target Language")
-    title: str = Field(..., description="The optimized product title.", title="Optimized Title")
-    short_description: str = Field(..., description="A concise product description.", title="Short Description")
-    long_description: str = Field(..., description="The translated and optimized long description.", title="Translated Long Description")
-    seo_description: str = Field(..., description="SEO-friendly description for the product.", title="SEO Description")
-    seo_title: str = Field(..., description="SEO-friendly title for the product.", title="SEO Title")
-    seo_keywords: str = Field(..., description="REQUIRED: SEO-friendly list (csv) of keywords for the product.", title="SEO Keywords")
-    seo_url: str = Field(..., description="SEO-friendly (relative page) URL for the product.", title="SEO URL")
-    unit: str = Field(..., description="The unit of measurement for the product. (default 'ks' if unsure)", title="Unit")
-    error: str = Field(..., description="Error message if transformation failed or empty.", title="Error")
-    return_code: int = Field(0, description="Return status code. [200 SUCCESS, 400 ERROR]", title="Error Code")
-    
+    target_language: str = Field(
+        ..., description="The target language for translation.", title="Target Language"
+    )
+    title: str = Field(
+        ..., description="The optimized product title.", title="Optimized Title"
+    )
+    short_description: str = Field(
+        ..., description="A concise product description.", title="Short Description"
+    )
+    long_description: str = Field(
+        ...,
+        description="The translated and optimized long description.",
+        title="Translated Long Description",
+    )
+    seo_description: str = Field(
+        ...,
+        description="SEO-friendly description for the product.",
+        title="SEO Description",
+    )
+    seo_title: str = Field(
+        ..., description="SEO-friendly title for the product.", title="SEO Title"
+    )
+    seo_keywords: str = Field(
+        ...,
+        description="REQUIRED: SEO-friendly list (csv) of keywords for the product.",
+        title="SEO Keywords",
+    )
+    seo_url: str = Field(
+        ...,
+        description="SEO-friendly (relative page) URL for the product.",
+        title="SEO URL",
+    )
+    unit: str = Field(
+        ...,
+        description="The unit of measurement for the product. (default 'ks' if unsure)",
+        title="Unit",
+    )
+    error: str = Field(
+        ...,
+        description="Error message if transformation failed or empty.",
+        title="Error",
+    )
+    return_code: int = Field(
+        0,
+        description="Return status code. [200 SUCCESS, 400 ERROR]",
+        title="Error Code",
+    )
+
     @staticmethod
     def migrate_language_code(value: str) -> str:
-        """ 
-        Updates.cz uses 'cz' instead of 'cs' for Czech language. 
-        Migrate language codes to new format. 
         """
-        logfire.info (f"migrate_language_code: {value}")
+        Updates.cz uses 'cz' instead of 'cs' for Czech language.
+        Migrate language codes to new format.
+        """
+        logfire.info(f"migrate_language_code: {value}")
         value = str(value).strip().lower()
-        value = 'cz' if value == 'cs' else value
+        value = "cz" if value == "cs" else value
         return value
 
-    @field_validator('target_language', mode='after')
+    @field_validator("target_language", mode="after")
     @classmethod
     def is_valid_target_language(cls, value: str) -> str:
-        logfire.info (f"is_valid_target_language: {value}")
+        logfire.info(f"is_valid_target_language: {value}")
         value = str(value).strip().lower()
         value = cls.migrate_language_code(value)
-        #import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         if value not in valid_target_languages:
-            raise ValueError(f'❌ {value} is not a valid target language. Expecting: {valid_target_languages}')
+            raise ValueError(
+                f"❌ {value} is not a valid target language. Expecting: {valid_target_languages}"
+            )
         return value
-    
+
+
 # Define the dependency dataclass for translation.
 @dataclass
 class TranslationDeps:
-   ''' Translation dependencies '''
-   valid_target_languages: tuple | list = valid_target_languages
+    """Translation dependencies"""
+
+    valid_target_languages: tuple | list = valid_target_languages
+
 
 # Update the agent to use the default model from config
 target_model = config.openai_default_model
@@ -99,20 +139,41 @@ agent_translator = Agent(
     retries=config.openai_default_retries,
 )
 
-@agent_translator.result_validator
-async def validate_target_language(ctx: RunContext[TranslationDeps], result: TranslationResult) -> TranslationResult:
-    ''' Validate the translation result '''
-    logfire.info (f"validate_target_language: {result.target_language}")
-    if result.target_language not in ctx.deps.valid_target_languages:
-        raise ModelRetry(f'Invalid Target Language: {result.target_language}. Expected: {valid_target_languages}')
-    return result
 
 @agent_translator.result_validator
-async def validate_fields_are_not_empty(ctx: RunContext[TranslationDeps], result: TranslationResult) -> TranslationResult:
-    ''' Validate that our main fields are not empty '''
-    logfire.info (f"validate_fields_are_not_empty: {result}")
-    if "" in (x.strip() for x in (result.target_language, result.title, result.short_description, result.long_description, result.seo_description, result.seo_title, result.seo_keywords, result.seo_url, result.unit)):
-        raise ModelRetry(f'No values should be empty! Got {result}')
+async def validate_target_language(
+    ctx: RunContext[TranslationDeps], result: TranslationResult
+) -> TranslationResult:
+    """Validate the translation result"""
+    logfire.info(f"validate_target_language: {result.target_language}")
+    if result.target_language not in ctx.deps.valid_target_languages:
+        raise ModelRetry(
+            f"Invalid Target Language: {result.target_language}. Expected: {valid_target_languages}"
+        )
+    return result
+
+
+@agent_translator.result_validator
+async def validate_fields_are_not_empty(
+    ctx: RunContext[TranslationDeps], result: TranslationResult
+) -> TranslationResult:
+    """Validate that our main fields are not empty"""
+    logfire.info(f"validate_fields_are_not_empty: {result}")
+    if "" in (
+        x.strip()
+        for x in (
+            result.target_language,
+            result.title,
+            result.short_description,
+            result.long_description,
+            result.seo_description,
+            result.seo_title,
+            result.seo_keywords,
+            result.seo_url,
+            result.unit,
+        )
+    ):
+        raise ModelRetry(f"No values should be empty! Got {result}")
     return result
 
 
@@ -126,8 +187,7 @@ async def translate_text(user_prompt: str, deps: TranslationDeps) -> Translation
     result = await agent_translator.run(user_prompt, deps=deps)
     return result.data
 
-all_agents = [
-    agent_translator
-    ]
+
+all_agents = [agent_translator]
 
 # EOF

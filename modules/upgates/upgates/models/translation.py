@@ -34,9 +34,13 @@ class TranslationRequest(BaseModel):  # noqa: F811
     target_lang: str = Field(..., description="Target language code")
     fields: list[str] = Field(..., description="List of fields to be translated")
 
+
 class TranslationResponse(BaseModel):  # noqa: F811
     product_id: int = Field(..., description="ID of the product that was translated")
-    translated_data: dict[str, str] = Field(..., description="Dictionary containing translated data")
+    translated_data: dict[str, str] = Field(
+        ..., description="Dictionary containing translated data"
+    )
+
 
 __all__ = ["TranslationRequest", "TranslationResponse"]
 
