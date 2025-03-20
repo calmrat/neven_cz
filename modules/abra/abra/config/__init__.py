@@ -61,6 +61,6 @@ logging.debug(f"Default database path: {default_db_path}")
 
 # Ensure default data path and subdirectories exist
 for path in [neven_path, data_path, input_path, output_path, logs_path, db_path]:
-    path = Path(path)
+    path = Path(path).expanduser()
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
