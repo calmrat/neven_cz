@@ -19,21 +19,10 @@ import logfire
 from dotenv import load_dotenv
 
 
-# Define helper functions
-def expand_home(path):
-    """Expand the user's home directory in a given path."""
-    if not path:
-        path = Path.home()
-    else:
-        path = Path(path)
-        path = os.path.expanduser(path)
-    return Path(path)
-
-
 def init_dirs(paths) -> int:
     """Create directories if they do not exist."""
     for path in paths:
-        path = expand_home(path)
+        path = Path(path).expanduser()
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
 
@@ -77,7 +66,7 @@ if not ai_model:
     raise NotImplementedError("AI Model (with key) is required for translation.")
 
 # Define application filestystem paths
-neven_path = Path(os.getenv("NEVEN_PATH", "~/.neven/"))
+neven_path = Path(os.getenv("NEVEN_PATH", "~/.neven/")).expanduser()
 
 data_path = neven_path / "data"
 

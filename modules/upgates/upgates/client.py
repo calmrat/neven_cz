@@ -15,21 +15,20 @@ Usage:
 File: upgates/client.py
 """
 
-import aiohttp
 import asyncio
+from typing import Dict, List, Optional
+
+import aiohttp
 
 # from flask.cli import F
 import logfire
-
-from typing import List, Dict
 import pandas as pd
-
-from upgates.models.translation import TranslationRequest
-from upgates import config
-from upgates.db.duckdb_api import UpgatesDuckDBAPI
-from upgates.ai import translate_text, TranslationDeps
 from pydantic import BaseModel, Field
-from typing import List, Optional
+
+from upgates import config
+from upgates.ai import TranslationDeps, translate_text
+from upgates.db.duckdb_api import UpgatesDuckDBAPI
+from upgates.models.translation import TranslationRequest
 
 
 def log_sync_statistics(sync_results: Dict[str, List]) -> None:
@@ -480,7 +479,7 @@ class UpgatesClient:
 
     async def translate_product(
         self, product_code: str, target_lang: str, prompt: str
-    ) -> TranslationRequest | None:
+    ) -> dict:
         target_lang = target_lang.lower()
         prompt = (prompt or "").strip()
 
@@ -522,7 +521,7 @@ class UpgatesClient:
 
         if not source_title or not source_long:
             logfire.error("Missing title or long description in Czech version.")
-            return
+            return None
 
         user_prompt = f"""
         Translate requested fields to {target_lang} language based on:
@@ -540,13 +539,13 @@ class UpgatesClient:
         try:
             deps = TranslationDeps()
             ai_result = await translate_text(user_prompt, deps=deps)
-        except Exception as e:
+        except RuntimeError as e:
             logfire.error(f"AI translation failed: {e}")
-            return
+            raise
 
         if not ai_result:
             logfire.error("AI translation returned an empty result.")
-            return
+            raise SystemExit
 
         logfire.info(f"Translation result: {ai_result}")
 
@@ -556,7 +555,7 @@ class UpgatesClient:
         self.db_api.update_product_translation(product_code, ai_dump)
 
         logfire.info("DuckDB instance updated with new translation fields.")
-        return ai_result
+        return ai_dump
 
     async def save_translation(self, product_code: str, target_lang: str = "cz"):
         target_lang = target_lang.lower().strip()

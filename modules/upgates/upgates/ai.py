@@ -22,12 +22,13 @@ from upgates import config
 if config.openai_enabled:
     # Ensure OpenAI API key is loaded in environment
     os.environ["OPENAI_API_KEY"] = config.openai_api_key
+    agent_retry_count = config.openai_default_retries or 1
 else:
     raise NotImplementedError("OpenAI API key is required for translation.")
 
 
 # #FIXME: load from config
-valid_target_languages = ("cz", "cs", "sk")
+valid_target_languages = ("cz", "cs", "sk", "en")
 
 
 # Define the result model for translation.
@@ -136,7 +137,7 @@ agent_translator = Agent(
     result_type=TranslationResult,
     deps_type=TranslationDeps,
     system_prompt=system_prompt,
-    retries=config.openai_default_retries,
+    retries=agent_retry_count,
 )
 
 

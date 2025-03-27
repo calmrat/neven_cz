@@ -282,15 +282,6 @@ class UpgatesDuckDBAPI:
             );
         """)
 
-    def _create_images_table(self):
-        """Create images table if it doesn't exist."""
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS images (
-                id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_image_id'),
-                url TEXT
-            );
-        """)
-
     def _create_parameter_values_table(self):
         """Create parameter values table if it doesn't exist."""
         self.conn.execute("""
@@ -304,6 +295,9 @@ class UpgatesDuckDBAPI:
 
     def _create_parameters_table(self):
         """Create parameters table if it doesn't exist."""
+        if self._check_table_exists("parameter_values"):
+            return
+
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS parameters (
                 id INTEGER PRIMARY KEY DEFAULT NEXTVAL('seq_parameter_id'),
@@ -317,10 +311,10 @@ class UpgatesDuckDBAPI:
             );
         """)
 
+        self._create_parameter_values_table()
         self._create_parameter_descriptions_table()
         self._create_parameter_value_descriptions_table()
         self._create_images_table()
-        self._create_parameter_values_table()
         self._create_parameters_table()
 
     def insert_product(
@@ -462,8 +456,18 @@ class UpgatesDuckDBAPI:
                 (category_id, product_id),
             ).fetchone()
             # print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
+
+            import ipdb
+
+            ipdb.set_trace()
+
+            # something here is wrong
+            # we inserting duplicates
+
             if existing_category:
-                # logfire.debug(f"⚠️ Category with ID {category_id} already exists. Skipping insert.")
+                logfire.debug(
+                    f"⚠️ Category with ID {category_id} already exists. Skipping insert."
+                )
                 return
             else:
                 # Insert category if it doesn't exist
@@ -589,6 +593,7 @@ class UpgatesDuckDBAPI:
         return result[0] if result else None
 
     def get_product_core(self, product_id=None):
+        """SQL Query to get product core details."""
         logfire.debug(f"Fetching product core details for product_id: {product_id}")
         query = """
         SELECT 
@@ -614,6 +619,7 @@ class UpgatesDuckDBAPI:
         return result
 
     def get_product_images(self, product_id=None):
+        """SQL Query to get product images"""
         query = """
         SELECT 
             i.product_id,
@@ -632,6 +638,7 @@ class UpgatesDuckDBAPI:
         return result
 
     def get_product_prices(self, product_id=None):
+        """SQL Query to product prices"""
         query = """
         SELECT 
             pr.product_id,
@@ -648,6 +655,7 @@ class UpgatesDuckDBAPI:
         return result
 
     def get_product_categories(self, product_id=None):
+        """SQL Query to get product categories."""
         query = """
         SELECT 
             c.product_id,
@@ -670,6 +678,7 @@ class UpgatesDuckDBAPI:
         return result
 
     def get_product_vat(self, product_id=None):
+        """SQL Query to product vat"""
         query = """
         SELECT 
             v.product_id,
@@ -686,6 +695,7 @@ class UpgatesDuckDBAPI:
         return result
 
     def get_product_descriptions(self, product_id=None):
+        """SQL Query to get product descriptiong"""
         query = """
         SELECT 
             d.product_id,
@@ -709,7 +719,7 @@ class UpgatesDuckDBAPI:
         result = self.conn.execute(query, parameters).fetchdf()
         return result
 
-    async def get_all_products(self) -> pd.DataFrame:
+    async def get_all_products(self) -> list[tuple]:
         """Show all products."""
         logfire.info("Fetching all products.")
         query = "SELECT product_id FROM products"
@@ -717,7 +727,7 @@ class UpgatesDuckDBAPI:
 
         if not pids:
             logfire.info("No product ids found.")
-            return pd.DataFrame()
+            return list()
 
         products = [
             (
@@ -811,27 +821,43 @@ class UpgatesDuckDBAPI:
         identified by its code.
         """
 
-        # NOTE: This query has a subquery that looks up the product_id based on the product_code
         try:
             query = """
-                UPDATE descriptions
-                SET 
-                    title = ?,
-                    long_description = ?,
-                    short_description = ?,
-                    url = ?,
-                    seo_keywords = ?,
-                    seo_description = ?,
-                    seo_title = ?,
-                    seo_url = ?,
-                    unit = ?
-                WHERE 
-                    product_id = (SELECT product_id FROM products WHERE code = ?)
-                    AND language = LOWER(?)
+                INSERT INTO descriptions (
+                    product_id,
+                    language,
+                    title,
+                    long_description,
+                    short_description,
+                    url,
+                    seo_keywords,
+                    seo_description,
+                    seo_title,
+                    seo_url,
+                    unit
+                )
+                VALUES (
+                    (SELECT product_id FROM products WHERE code = ?),
+                    LOWER(?),
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                ON CONFLICT (product_id, language) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    long_description = EXCLUDED.long_description,
+                    short_description = EXCLUDED.short_description,
+                    url = EXCLUDED.url,
+                    seo_keywords = EXCLUDED.seo_keywords,
+                    seo_description = EXCLUDED.seo_description,
+                    seo_title = EXCLUDED.seo_title,
+                    seo_url = EXCLUDED.seo_url,
+                    unit = EXCLUDED.unit;
             """
+
             self.conn.execute(
                 query,
                 (
+                    product_code,  # for SELECT product_id
+                    translations.get("target_language"),  # for LOWER(?)
                     translations.get("title"),
                     translations.get("long_description"),
                     translations.get("short_description"),
@@ -841,14 +867,13 @@ class UpgatesDuckDBAPI:
                     translations.get("seo_title"),
                     translations.get("seo_url"),
                     translations.get("unit"),
-                    product_code,
-                    translations.get("target_language"),
                 ),
             )
         except Exception as e:
             logfire.error(
                 f"Failed to update translation for product '{product_code}' in DuckDB: \nERROR: {e}"
             )
+            raise
 
 
 # EOF
