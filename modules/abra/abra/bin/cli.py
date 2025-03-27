@@ -47,6 +47,7 @@ console = Console()
 sample_input_filename = "abra/faktura_vydana-sample-1.xml"
 sample_input_path = config.input_path / sample_input_filename
 
+
 if not sample_input_path.exists():
     logger.error("Sample XML file not found.")
     logger.debug(f"Expected path: {sample_input_path}")

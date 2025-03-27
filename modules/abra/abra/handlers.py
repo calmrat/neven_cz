@@ -31,6 +31,22 @@ Example:
 File: /Users/cward/Repos/neven_cz/modules/abra/abra/handlers.py
 """
 
+""" 
+Possibly missing:
+   invoiceItem.percentVAT
+
+   <inv:invoiceSummary>
+        <inv:roundingVAT>noneEveryRate</inv:roundingVAT>
+        <inv:foreignCurrency>
+          <typ:currency>
+            <typ:ids>EUR</typ:ids>
+          </typ:currency>
+          <typ:rate>25.135</typ:rate>
+          <typ:amount>1</typ:amount>
+        </inv:foreignCurrency>
+      </inv:invoiceSummary>
+"""
+
 import logging
 import re
 from datetime import datetime
@@ -427,11 +443,17 @@ def build_data_pack(invoices_data: dict) -> str:
                 foreign_currency_currency_el, ET.QName(NS["typ"], "ids")
             )
             foreign_currency_rate_el = ET.SubElement(
-                invoiceSummary_el, ET.QName(NS["inv"], "rate")
+                foreign_currency_el, ET.QName(NS["inv"], "rate")
             )
-
             foreign_currency_currency_ids_el.text = c_ids
             foreign_currency_rate_el.text = f"{rate:.4f}"
+
+            # FIXME: THIS PROBABLY SHOULDN"T BE HARDCODED!
+            foreign_currency_amount = "1"
+            foreign_currency_amount_el = ET.SubElement(
+                foreign_currency_el, ET.QName(NS["inv"], "amount")
+            )
+            foreign_currency_amount_el.text = foreign_currency_amount
 
     ET.indent(root)
     # FIXME - encoding - cp1250?
