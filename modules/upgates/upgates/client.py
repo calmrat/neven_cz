@@ -609,27 +609,31 @@ class UpgatesClient:
             ]
         }
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                url = f"{self.API_URL}/products/{product_code}"
-                auth = aiohttp.BasicAuth(self.LOGIN, self.API_KEY)
-                async with session.put(
-                    url, json=payload, auth=auth, ssl=self.VERIFY_SSL
-                ) as resp:
-                    if resp.status == 200:
-                        logfire.info(
-                            "Product translations saved to Upgates.cz API successfully."
-                        )
-                        return await resp.json()
-                    else:
-                        error_text = await resp.text()
-                        logfire.error(
-                            f"Failed to save translations. Status: {resp.status} - {error_text}"
-                        )
-        except Exception as e:
-            logfire.error(f"Error while saving translations: {e}")
-        else:
-            logfire.info("✅ Translation saved successfully. Response: {resp}")
+        async with aiohttp.ClientSession() as session:
+            url = f"{self.API_URL}/products/{product_code}"
+            auth = aiohttp.BasicAuth(self.LOGIN, self.API_KEY)
+            async with session.put(
+                url, json=payload, auth=auth, ssl=self.VERIFY_SSL
+            ) as resp:
+                if resp.status == 200:
+                    logfire.info(
+                        "Product translations saved to Upgates.cz API successfully."
+                    )
+                    return await resp.json()
+                else:
+                    error_text = await resp.text()
+                    raise RuntimeError(
+                        f"🔥 [{product_code}] Failed to save translation. Status: {resp.status} - {error_text}"
+                    )
 
 
 # EOF
+
+
+# FIXME NOTES
+
+# check last update time...
+
+# 11459
+# 11479
+# 11462

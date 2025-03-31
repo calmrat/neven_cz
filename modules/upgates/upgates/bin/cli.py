@@ -278,6 +278,10 @@ async def save_product_translations(target_lang: str) -> None:
                     d.product_id = (SELECT p.product_id from products AS p WHERE p.code = ?) 
                     AND 
                     d.language = ?
+                    AND 
+                    d.long_description IS NOT NULL
+                    AND 
+                    d.long_description <> ''
             """.strip()
 
             exists = client.db_api.conn.execute(query, [code, target_lang]).fetchone()

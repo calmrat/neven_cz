@@ -22,7 +22,7 @@ from upgates import config
 if config.openai_enabled:
     # Ensure OpenAI API key is loaded in environment
     os.environ["OPENAI_API_KEY"] = config.openai_api_key
-    agent_retry_count = int(config.openai_default_retries) or 1
+    agent_retry_count: int = int(config.openai_default_retries) or 1
 else:
     raise NotImplementedError("OpenAI API key is required for translation.")
 
