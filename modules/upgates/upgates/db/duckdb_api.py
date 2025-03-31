@@ -719,24 +719,41 @@ class UpgatesDuckDBAPI:
         result = self.conn.execute(query, parameters).fetchdf()
         return result
 
-    async def get_all_products(self) -> list[tuple]:
-        """Show all products."""
-        logfire.info("Fetching all products.")
+    async def get_all_product_ids(self) -> list[str]:
+        """Query db for full list of product ids."""
+        logfire.info("Getting product ids...")
         query = "SELECT product_id FROM products"
         pids = self.conn.execute(query).fetchall()
 
         if not pids:
-            logfire.info("No product ids found.")
-            return list()
+            raise RuntimeError("No product ids found.")
+
+        return [str(pid[0]) for pid in pids]
+
+    async def get_all_product_codes(self) -> list[str]:
+        """Query db for full list of product ids."""
+        logfire.info("Getting product codes...")
+        query = "SELECT code FROM products ORDER BY code ASC"
+        codes = self.conn.execute(query).fetchall()
+
+        if not codes:
+            raise RuntimeError("No product ids found.")
+
+        return [str(pid[0]) for pid in codes]
+
+    async def get_all_products(self) -> list[tuple]:
+        """Show all products."""
+        logfire.info("Fetching all products.")
+        pids = await self.get_all_product_ids()
 
         products = [
             (
-                self.get_product_core(pid[0]),
-                self.get_product_images(pid[0]),
-                self.get_product_prices(pid[0]),
-                self.get_product_categories(pid[0]),
-                self.get_product_vat(pid[0]),
-                self.get_product_descriptions(pid[0]),
+                self.get_product_core(pid),
+                self.get_product_images(pid),
+                self.get_product_prices(pid),
+                self.get_product_categories(pid),
+                self.get_product_vat(pid),
+                self.get_product_descriptions(pid),
             )
             for pid in pids
         ]

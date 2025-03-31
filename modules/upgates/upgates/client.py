@@ -119,8 +119,8 @@ class UpgatesClient:
                 for product in products:
                     # print ("Product: ", product['product_id'], product['code'])
                     # import pdb; pdb.set_trace()
-                    product_id = product.get("product_id", 0)
-                    code = product.get("code", "Unknown Code")
+                    product_id = product.get("product_id")
+                    code = product.get("code")
                     ean = product.get("ean", "")
                     manufacturer = product.get("manufacturer", "")
                     stock = product.get("stock", 0)
@@ -531,7 +531,7 @@ class UpgatesClient:
          Long Description: {source_long}
         """
 
-        if prompt:
+        if prompt and prompt != "None":
             logfire.debug(f"Injecting additional user prompt text: {prompt}")
             user_prompt += f"\n\nAdditionally, {prompt}"
 

@@ -35,6 +35,7 @@ import sys
 
 import click
 import duckdb
+import ipdb
 import IPython
 import yaml
 from rich.console import Console
@@ -212,8 +213,9 @@ def translate_product(product_code, target_lang, prompt, save, update):
     client = UpgatesClient()
 
     try:
+        console.print(f"▶️ Translate product: {product_code}")
         asyncio.run(client.translate_product(product_code, target_lang, prompt))
-        console.print(f"✅ Translation completed for product: {product_code}")
+        console.print(f"✅ Translation completed: {product_code}")
     except ValueError as e:
         console.print(f"❌ Translation failed: {e}")
         raise
@@ -245,6 +247,66 @@ def save_translation(product_code, target_lang, update):
         empty_prompt = ""
         asyncio.run(client.translate_product(product_code, target_lang, empty_prompt))
     asyncio.run(client.save_translation(product_code, target_lang))
+
+
+async def save_product_translation(
+    client: UpgatesClient, code: str, target_lang: str
+) -> list:
+    """bla bla"""
+    groups = []
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(client.translate_product(code, target_lang, ""))
+        tg.create_task(client.save_translation(code, target_lang))
+        groups.append(tg)
+    return groups
+
+
+async def save_product_translations(target_lang: str) -> None:
+    """Async wrapper to batch save product translations."""
+    target_lang = target_lang.lower()
+    client = UpgatesClient()
+    codes = await client.db_api.get_all_product_codes()
+
+    chunk_size = 10
+    chunks = [codes[x : x + chunk_size] for x in range(0, len(codes), chunk_size)]
+
+    async def save(code, target_lang):
+        async with asyncio.TaskGroup() as tg:
+            query = """
+            SELECT 1 FROM descriptions AS d 
+                WHERE 
+                    d.product_id = (SELECT p.product_id from products AS p WHERE p.code = ?) 
+                    AND 
+                    d.language = ?
+            """.strip()
+
+            exists = client.db_api.conn.execute(query, [code, target_lang]).fetchone()
+
+            if exists:
+                print(f"☑️ Skipped: {code}")
+                return
+
+            t1 = await client.translate_product(code, target_lang, "")
+            t2 = tg.create_task(client.save_translation(code, target_lang))
+
+    for chunk in chunks:
+        tasks = list()
+        for code in chunk:
+            if "X" in code:
+                console.print(f"❌ Skip: {code}")
+                continue
+            # tasks.append(code)
+            tasks.append(save(code, target_lang))
+        await asyncio.gather(*tasks)
+        # print(tasks)
+
+
+# CMD: Save all translations
+@click.command()
+@click.argument("target_lang")
+def save_all_translations(target_lang: str):
+    """Save all product translations back to Upgates.cz API."""
+    asyncio.run(save_product_translations(target_lang))
 
 
 @click.command()
@@ -323,7 +385,7 @@ def show_products(embed):
     # Get all product details (with foreign key relationships)
     products = asyncio.run(client.db_api.get_all_products())
 
-    console.print(products.to_json(orient="records", indent=2))
+    console.print(products[0])
 
     if embed:
         IPython.embed()
@@ -392,6 +454,7 @@ cli.add_command(clear_cache)
 # Register the new commands with the CLI group:
 cli.add_command(translate_product)
 cli.add_command(save_translation)
+cli.add_command(save_all_translations)
 
 cli.add_command(list_product_fields)
 
