@@ -16,7 +16,7 @@ File: upgates/client.py
 """
 
 import asyncio
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 
@@ -28,7 +28,6 @@ from pydantic import BaseModel, Field
 from upgates import config
 from upgates.ai import TranslationDeps, translate_text
 from upgates.db.duckdb_api import UpgatesDuckDBAPI
-from upgates.models.translation import TranslationRequest
 
 
 def log_sync_statistics(sync_results: Dict[str, List]) -> None:
@@ -85,10 +84,10 @@ class UpgatesClient:
 
     DATA_PATH = config.data_path
     DB_FILE = config.db_file
-    API_URL = config.upgates_api_url
-    LOGIN = config.upgates_login
-    API_KEY = config.upgates_api_key
-    VERIFY_SSL = config.upgates_verify_ssl
+    API_URL = config.UPGATES_API_URL
+    LOGIN = config.UPGATES_LOGIN
+    API_KEY = config.UPGATES_API_KEY
+    VERIFY_SSL = True if config.UPGATES_VERIFY_SSL else False
 
     def __init__(self):
         """Ensure DuckDB database is initialized before starting."""
@@ -262,142 +261,123 @@ class UpgatesClient:
         page = 1
 
         while True:
-            try:
-                customers_response = await self.fetch_data(
-                    "customers", page, page_count
-                )
-                if (
-                    isinstance(customers_response, dict)
-                    and "customers" in customers_response
-                ):
-                    customers = customers_response["customers"]
-                    if customers:
-                        all_customers.extend(customers)
-                        logfire.info(f"Fetched {len(customers)} items from page {page}")
+            customers_response = await self.fetch_data("customers", page, page_count)
+            if (
+                isinstance(customers_response, dict)
+                and "customers" in customers_response
+            ):
+                customers = customers_response["customers"]
+                if customers:
+                    all_customers.extend(customers)
+                    logfire.info(f"Fetched {len(customers)} items from page {page}")
 
-                        total_pages = customers_response.get("number_of_pages", 0)
-                        if page >= total_pages:
-                            logfire.debug(
-                                f"✅ All pages fetched. Total pages: {total_pages}"
-                            )
-                            break
-                        page += 1
-                    else:
-                        logfire.warning(f"⚠️ No customers found on page {page}.")
+                    total_pages = customers_response.get("number_of_pages", 0)
+                    if page >= total_pages:
+                        logfire.debug(
+                            f"✅ All pages fetched. Total pages: {total_pages}"
+                        )
                         break
+                    page += 1
                 else:
-                    logfire.error(
-                        f"❌ Customers data is missing in response for page {page}."
-                    )
+                    logfire.warning(f"⚠️ No customers found on page {page}.")
                     break
-            except Exception as e:
-                logfire.warning(f"⚠️ Failed to fetch customer data: {e} for page {page}")
+            else:
+                logfire.error(
+                    f"❌ Customers data is missing in response for page {page}."
+                )
                 break
 
-        if all_customers:
-            self.db_api.insert_customers(all_customers)
-            logfire.info(
-                f"✅ Customer sync complete. {len(all_customers)} customers fetched and inserted."
-            )
+        # FIXME
+        # We need to come back to this later
 
-    async def sync_orders(self, page_count=None):
+        # if all_customers:
+        #    self.db_api.insert_customers(all_customers)
+        #    logfire.info(
+        #        f"✅ Customer sync complete. {len(all_customers)} customers fetched and inserted."
+        #    )
+
+    async def sync_orders(self):
         """Sync order data from the API."""
         logfire.info("ℹ️ Fetching order data...")
         all_orders = []
         page = 1
 
         while True:
-            try:
-                orders_response = await self.fetch_data("orders", page)
-                if isinstance(orders_response, dict) and "orders" in orders_response:
-                    orders = orders_response["orders"]
-                    if orders:
-                        all_orders.extend(orders)
-                        logfire.info(f"Fetched {len(orders)} items from page {page}")
+            orders_response = await self.fetch_data("orders", page)
+            if isinstance(orders_response, dict) and "orders" in orders_response:
+                orders = orders_response["orders"]
+                if orders:
+                    all_orders.extend(orders)
+                    logfire.info(f"Fetched {len(orders)} items from page {page}")
 
-                        total_pages = orders_response.get("number_of_pages", 0)
-                        if page >= total_pages:
-                            logfire.debug(
-                                f"✅ All pages fetched. Total pages: {total_pages}"
-                            )
-                            break
-                        page += 1
-                    else:
-                        logfire.warning(f"⚠️ No orders found on page {page}.")
+                    total_pages = orders_response.get("number_of_pages", 0)
+                    if page >= total_pages:
+                        logfire.debug(
+                            f"✅ All pages fetched. Total pages: {total_pages}"
+                        )
                         break
+                    page += 1
                 else:
-                    logfire.error(
-                        f"❌ Orders data is missing in response for page {page}."
-                    )
+                    logfire.warning(f"⚠️ No orders found on page {page}.")
                     break
-            except Exception as e:
-                logfire.warning(f"⚠️ Failed to fetch order data: {e} for page {page}")
+            else:
+                logfire.error(f"❌ Orders data is missing in response for page {page}.")
                 break
 
-        if all_orders:
-            self.db_api.insert_orders(all_orders)
-            logfire.info(
-                f"✅ Order sync complete. {len(all_orders)} orders fetched and inserted."
-            )
+        # if all_orders:
+        #     self.db_api.insert_orders(all_orders)
+        #     logfire.info(
+        #         f"✅ Order sync complete. {len(all_orders)} orders fetched and inserted."
+        #     )
 
-    async def sync_parameters(self, page_count=None):
+    async def sync_parameters(self):
         """Sync parameter data from the API."""
         logfire.info("ℹ️ Fetching parameter data...")
         page = 1
 
         while True:
-            try:
-                parameters_response = await self.fetch_data("parameters", page)
-                if (
-                    isinstance(parameters_response, dict)
-                    and "parameters" in parameters_response
-                ):
-                    parameters = parameters_response["parameters"]
-                    if parameters:
-                        logfire.info(
-                            f"Fetched {len(parameters)} items from page {page}"
-                        )
-                        logfire.debug(
-                            f"Inserting {len(parameters)} parameters into the database."
-                        )
-
-                        parameters = Parameters(
-                            parameters=[
-                                Parameter(**parameter) for parameter in parameters
-                            ]
-                        )
-
-                        import ipdb
-
-                        ipdb.set_trace()
-                        self.db_api.insert_parameters(parameters)
-
-                        total_pages = parameters_response.get("number_of_pages", 0)
-                        if page >= total_pages:
-                            logfire.debug(
-                                f"✅ All pages fetched. Total pages: {total_pages}"
-                            )
-                            break
-                        page += 1
-                    else:
-                        logfire.warning(f"⚠️ No parameters found on page {page}.")
-                        break
-                else:
-                    logfire.error(
-                        f"❌ Parameters data is missing in response for page {page}."
+            parameters_response = await self.fetch_data("parameters", page)
+            if (
+                isinstance(parameters_response, dict)
+                and "parameters" in parameters_response
+            ):
+                parameters = parameters_response["parameters"]
+                if parameters:
+                    logfire.info(f"Fetched {len(parameters)} items from page {page}")
+                    logfire.debug(
+                        f"Inserting {len(parameters)} parameters into the database."
                     )
+
+                    parameters = Parameters(
+                        parameters=[Parameter(**parameter) for parameter in parameters]
+                    )
+
+                    import ipdb
+
+                    ipdb.set_trace()
+                    # self.db_api.insert_parameters(parameters)
+
+                    total_pages = parameters_response.get("number_of_pages", 0)
+                    if page >= total_pages:
+                        logfire.debug(
+                            f"✅ All pages fetched. Total pages: {total_pages}"
+                        )
+                        break
+                    page += 1
+                else:
+                    logfire.warning(f"⚠️ No parameters found on page {page}.")
                     break
-            except Exception as e:
-                logfire.warning(
-                    f"⚠️ Failed to fetch parameter data: {e} for page {page}"
+            else:
+                logfire.error(
+                    f"❌ Parameters data is missing in response for page {page}."
                 )
                 break
 
-    async def fetch_data(self, endpoint, page=1, page_count=None):
+    async def fetch_data(self, endpoint, page=1, page_count=None) -> dict[str, Any]:
         """Fetch data from the API with retries and handle pagination with rate-limiting."""
         all_data = []
 
-        async def fetch_page(page_number):
+        async def fetch_page(page_number: int):
             """Fetch a single page of data."""
             try:
                 logfire.debug(f"🔄 Fetching page {page_number} of {endpoint}")
@@ -412,15 +392,13 @@ class UpgatesClient:
                         )
 
                         if response.status == 429:
+                            raise RuntimeError("Rate limit exceeded. Retry later.")
                             # If rate limit exceeded, extract Retry-After header and wait
-                            retry_after = response.headers.get(
-                                "Retry-After", 60
-                            )  # Default to 60 seconds if not provided
-                            logfire.warning(
-                                f"❌ Rate limit exceeded, retrying after {retry_after} seconds."
-                            )
-                            await asyncio.sleep(int(retry_after))  # Wait for retry time
-                            return await fetch_page(page_number)  # Retry the same page
+                            # retry_after = response.headers.get(
+                            #    "Retry-After", 60
+                            # )  # Default to 60 seconds if not provided
+                            # await asyncio.sleep(int(retry_after))  # Wait for retry time
+                            # return await fetch_page(page_number)  # Retry the same page
 
                         # Parse the response
                         data = await response.json()
@@ -451,7 +429,7 @@ class UpgatesClient:
                 logfire.warning(
                     f"⚠️ Failed to fetch page {page_number} of {endpoint}: {e}"
                 )
-                return [], 0
+                raise
 
         # Fetch pages sequentially or up to the specified `page_count`
         page = 1
@@ -480,6 +458,7 @@ class UpgatesClient:
     async def translate_product(
         self, product_code: str, target_lang: str, prompt: str
     ) -> dict:
+        """Translate product descriptions using AI."""
         target_lang = target_lang.lower()
         prompt = (prompt or "").strip()
 
@@ -492,14 +471,12 @@ class UpgatesClient:
         product_details = await self.db_api.get_product_details(code=product_code)
 
         if product_details is None:
-            logfire.warning(f"Product '{product_code}' not found in local database.")
-            return None
+            raise ValueError(f"Product '{product_code}' not found in local database.")
 
         if isinstance(product_details, pd.DataFrame) and product_details.empty:
-            logfire.warning(
+            raise ValueError(
                 f"No product details found for '{product_code}' in local database."
             )
-            return None
 
         # Assume the first record represents the product.
         product = product_details.iloc[0]
@@ -558,6 +535,7 @@ class UpgatesClient:
         return ai_dump
 
     async def save_translation(self, product_code: str, target_lang: str = "cz"):
+        """Save the translated product back to Upgates API."""
         target_lang = target_lang.lower().strip()
         logfire.info(
             f"Saving '{target_lang}' translations for product '{product_code}' back to Upgates.cz API"

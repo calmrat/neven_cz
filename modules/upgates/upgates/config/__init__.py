@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 """
 This module initializes configuration settings for the Abra application.
@@ -39,28 +40,30 @@ logging_level = os.getenv("LOGGING_LEVEL", "").lower() or "info"
 # Logfire Logging
 logfire_enabled = os.getenv("LOGFIRE_ENABLED", "").lower() in ("1", "true")
 logfire_consoloe_min_log_level = (
-    os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL").lower() or "info"
+    os.getenv("LOGFIRE_CONSOLE_MIN_LOG_LEVEL", "").lower() or "info"
 )
 logfire_project = os.getenv("LOGFIRE_PROJECT", "neven-agents")
 
 # CLI Settings
-paralell_batch_size = int(os.getenv("PARALELL_BATCH_SIZE", 1))
+paralell_batch_size = int(os.getenv("PARALELL_BATCH_SIZE", "1"))
 
 # Upgates
-upgates_api_url = os.getenv("UPGATES_API_URL", "")
-upgates_login = os.getenv("UPGATES_LOGIN", "")
-upgates_api_key = os.getenv("UPGATES_API_KEY", "")
-upgates_sync_interveral_minutes = os.getenv("UPGATES_SYNC_INTERVAL_MINUTES", 10)
-upgates_api_retry_limit = os.getenv("UPGATES_API_RETRY_LIMIT", 1)
-upgates_verify_ssl = os.getenv("UPGATES_VERIFY_SSL", "").lower() in ("1", "true")
+UPGATES_API_URL = os.getenv("UPGATES_API_URL", "")
+UPGATES_LOGIN = os.getenv("UPGATES_LOGIN", "")
+UPGATES_API_KEY = os.getenv("UPGATES_API_KEY", "")
+UPGATES_SYNC_INTERVAL_MINUTES = int(os.getenv("UPGATES_SYNC_INTERVAL_MINUTES", "10"))
+UPGATES_API_RETRY_LIMIT = int(os.getenv("UPGATES_API_RETRY_LIMIT", "1"))
+UPGATES_VERIFY_SSL = (
+    1 if os.getenv("UPGATES_VERIFY_SSL", "1").lower() in ("1", "true") else 0
+)
 
 # Open AI
-openai_enabled = os.getenv("OPENAI_ENABLED", "").lower() in ("1", "true")
-openai_api_key = os.getenv("OPENAI_API_KEY", "")
-openai_default_model = os.getenv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini")
-openai_default_retries = os.getenv("OPENAI_DEFAULT_RETRIES", 1)
+OPENAI_ENABLED = os.getenv("OPENAI_ENABLED", "").lower() in ("1", "true")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_DEFAULT_MODEL = os.getenv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini")
+OPENAI_DEFAULT_RETRIES = int(os.getenv("OPENAI_DEFAULT_RETRIES", "1"))
 
-ai_model = openai_default_model if openai_enabled else None
+ai_model = OPENAI_DEFAULT_MODEL if OPENAI_ENABLED else None
 
 if not ai_model:
     raise NotImplementedError("AI Model (with key) is required for translation.")
@@ -105,9 +108,9 @@ if logging_enabled:
 
     if logging_level.lower() == "debug":
         logger.setLevel(logging.DEBUG)
-        logger.debug(f"LOGGING: {debug_msg}")
+        logger.debug("LOGGING: %s", debug_msg)
     else:
-        logger.info(f"LOGGING: {debug_msg}")
+        logger.info("LOGGING: %s", debug_msg)
 
 if logfire_enabled:
     if logfire_consoloe_min_log_level.lower() == "debug":
@@ -125,11 +128,11 @@ if logfire_enabled:
 
 
 # Log paths
-logging.debug(f"Default data path: {data_path}")
-logging.debug(f"Input path: {input_path}")
-logging.debug(f"Output path: {output_path}")
-logging.debug(f"Logs path: {logs_path}")
-logging.debug(f"Database path: {db_path}")
-logging.debug(f"Default database path: {default_db_path}")
+logging.debug("Default data path: %s", data_path)
+logging.debug("Input path: %s", input_path)
+logging.debug("Output path: %s", output_path)
+logging.debug("Logs path: %s", logs_path)
+logging.debug("Database path: %s", db_path)
+logging.debug("Default database path: %s", default_db_path)
 
 # EOF

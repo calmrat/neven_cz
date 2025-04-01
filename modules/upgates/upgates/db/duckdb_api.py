@@ -752,9 +752,7 @@ class UpgatesDuckDBAPI:
         logfire.info(f"Found {len(products)} products.")
         return products
 
-    async def get_product_details(
-        self, code=None, product_id=None
-    ) -> pd.DataFrame | None:
+    async def get_product_details(self, code=None, product_id=None) -> pd.DataFrame:
         """Show all products with aggregated details from separate queries."""
         logfire.info(
             f"Fetching product details for code, product_id: {code}, {product_id}"

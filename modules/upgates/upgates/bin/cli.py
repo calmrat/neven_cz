@@ -36,14 +36,12 @@ import sys
 import click
 import duckdb
 import IPython
-import yaml
 from rich.console import Console
+from upgates import config
+from upgates.client import UpgatesClient
 
 # Ensure the package directory is included in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from upgates import config
-from upgates.client import UpgatesClient
 
 # Configure Rich Console output
 console = Console()
@@ -68,28 +66,27 @@ def _clear_cache() -> int:
 @click.group()
 def cli():
     """CLI for managing Upgates API sync, translation, and configuration."""
-    pass
 
 
 # CMD: Start Webhook
 @click.command()
 def start_webhook():
     """Start webhook server for real-time updates."""
-    subprocess.run(["python", "webhook_server.py"])
+    subprocess.run(["python", "webhook_server.py"], check=True)
 
 
 # CMD: Start Scheduler
 @click.command()
 def start_scheduler():
     """Start scheduled auto-sync process."""
-    subprocess.run(["python", "scheduler.py"])
+    subprocess.run(["python", "scheduler.py"], check=True)
 
 
 ####
 
 
 @click.command()
-@click.option("--clear-cache", is_flag=True, help="Clear the cache before syncing.")
+@click.option("--reset-cache", is_flag=True, help="Clear the cache before syncing.")
 @click.option(
     "--page-count",
     default=None,
@@ -99,10 +96,10 @@ def start_scheduler():
 @click.option(
     "--embed", is_flag=True, help="Launch ipython.embed() shell after syncing."
 )
-def sync_products(clear_cache, page_count, embed):
+def sync_products(reset_cache, page_count, embed):
     """Sync products data."""
 
-    if clear_cache:
+    if reset_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
 
     client = UpgatesClient()
@@ -113,16 +110,16 @@ def sync_products(clear_cache, page_count, embed):
 
 
 @click.command()
-@click.option("--clear-cache", is_flag=True, help="Clear the cache before syncing.")
+@click.option("--reset-cache", is_flag=True, help="Clear the cache before syncing.")
 @click.option(
     "--page-count",
     default=None,
     type=int,
     help="Number of pages to fetch. Default is all pages.",
 )
-def sync_customers(clear_cache, page_count):
+def sync_customers(reset_cache, page_count):
     """Sync customers data."""
-    if clear_cache:
+    if reset_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
     client = UpgatesClient()
     asyncio.run(client.sync_customers(page_count=page_count))
@@ -136,9 +133,9 @@ def sync_customers(clear_cache, page_count):
     type=int,
     help="Number of pages to fetch. Default is all pages.",
 )
-def sync_orders(clear_cache, page_count):
+def sync_orders(reset_cache, page_count):
     """Sync orders data."""
-    if clear_cache:
+    if reset_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
     client = UpgatesClient()
     asyncio.run(client.sync_orders(page_count=page_count))
@@ -152,9 +149,9 @@ def sync_orders(clear_cache, page_count):
     type=int,
     help="Number of pages to fetch. Default is all pages.",
 )
-def sync_parameters(clear_cache, page_count):
+def sync_parameters(reset_cache, page_count):
     """Show all parameters."""
-    if clear_cache:
+    if reset_cache:
         _clear_cache()  # Ensure clear_cache is called if the flag is set
     client = UpgatesClient()
     asyncio.run(client.sync_parameters(page_count=page_count))
@@ -170,10 +167,10 @@ def sync_parameters(clear_cache, page_count):
     type=int,
     help="Number of pages to fetch. Default is all pages.",
 )
-def sync_all(page_count):
+def sync_all():
     """Sync all data: products, customers, orders."""
     client = UpgatesClient()
-    asyncio.run(client.sync_all(page_count=page_count))
+    asyncio.run(client.sync_all())
 
 
 ####
@@ -292,11 +289,12 @@ async def save_product_translations(target_lang: str) -> None:
                 return
 
             try:
-                t1 = await client.translate_product(code, target_lang, "")
+                await client.translate_product(code, target_lang, "")
             except AttributeError:
-                print(f"❌ Translation failed: {code}")
+                console.print(f"❌ Translation failed: {code}")
                 return
-            t2 = tg.create_task(client.save_translation(code, target_lang))
+            else:
+                tg.create_task(client.save_translation(code, target_lang))
 
     for chunk in chunks:
         tasks = list()
@@ -304,10 +302,8 @@ async def save_product_translations(target_lang: str) -> None:
             if "X" in code:
                 console.print(f"❌ Skip: {code}")
                 continue
-            # tasks.append(code)
             tasks.append(save(code, target_lang))
         await asyncio.gather(*tasks)
-        # print(tasks)
 
 
 # CMD: Save all translations
@@ -321,12 +317,6 @@ def save_all_translations(target_lang: str):
 @click.command()
 @click.argument("product_code")
 @click.option(
-    "--format",
-    default="json",
-    type=click.Choice(["yaml", "json", "df"]),
-    help="Output format: JSON (default), TOML, or DataFrame (df).",
-)
-@click.option(
     "--language", default="cz", help="Language code for the product mutation."
 )
 @click.option(
@@ -335,7 +325,7 @@ def save_all_translations(target_lang: str):
     help="Launch ipython.embed() shell after searching for product.",
 )
 @click.argument("fields", nargs=-1)
-def search_product(product_code, format, language, embed, fields):
+def search_product(product_code, language, embed, fields):
     """Search for a product by product_code."""
     client = UpgatesClient()
     product = asyncio.run(client.db_api.get_product_details(product_code))
@@ -352,8 +342,6 @@ def search_product(product_code, format, language, embed, fields):
     fields |= required_fields
     fields = list(fields)
 
-    # import ipdb; ipdb.set_trace()
-
     if fields:
         product = product.loc[:, fields]
 
@@ -362,19 +350,7 @@ def search_product(product_code, format, language, embed, fields):
             lambda x: [desc for desc in x if desc["language"] == language]
         )
 
-    if format == "df":
-        msg = product.to_string(index=False)
-    elif format == "json":
-        msg = product.to_json(orient="records", indent=2)
-    elif format == "csv":
-        raise NotImplementedError("CSV output format not yet implemented.")
-    elif format == "toml":
-        raise NotImplementedError("TOML output format not yet implemented.")
-    elif format == "yaml":
-        msg = yaml.dump(product.to_dict(orient="records"), indent=2)
-    else:
-        msg = product.to_string(index=False)
-
+    msg = product.to_json(orient="records", indent=2)
     console.print(msg)
 
     if embed:

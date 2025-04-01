@@ -1,8 +1,11 @@
+"""
+Convert between PO and CSV files.
+"""
+
 import csv
 import sys
 from pathlib import Path
 
-# import ipdb
 import polib
 
 DATA_PATH = Path("~/.neven/data")

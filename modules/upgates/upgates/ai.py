@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 #!/usr/bin/env python3
+
 """
 upgates/pydantic_ai.py v0.4.1
 File: upgates/pydantic_ai.py
@@ -16,24 +18,30 @@ import logfire
 from openai import BadRequestError
 from pydantic import BaseModel, Field, field_validator
 from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai.models.openai import OpenAIModel
 
 from upgates import config
 
+# Currently we only support OpenAI
+
 # Ensure OpenAI API key is loaded in environment
-if config.openai_enabled:
-    # Ensure OpenAI API key is loaded in environment
-    os.environ["OPENAI_API_KEY"] = config.openai_api_key
-    agent_retry_count: int = int(config.openai_default_retries) or 3
-else:
+if not config.OPENAI_ENABLED:
     raise NotImplementedError("OpenAI API key is required for translation.")
 
+# Ensure OpenAI API key is loaded in environment
+os.environ["OPENAI_API_KEY"] = config.OPENAI_API_KEY
 
-# #FIXME: load from config
-valid_target_languages = ("cz", "cs", "sk", "en")
+AGENT_RETRY_COUNT: int = int(config.OPENAI_DEFAULT_RETRIES) or 3
+TARGET_MODEL = OpenAIModel(config.OPENAI_DEFAULT_MODEL)
+
+# Define the valid target languages.
+VALID_TARGET_LANGUAGES = ("cz", "cs", "sk", "en")
 
 
 # Define the result model for translation.
 class TranslationResult(BaseModel):
+    """Translation result model"""
+
     target_language: str = Field(
         ..., description="The target language for translation.", title="Target Language"
     )
@@ -96,13 +104,14 @@ class TranslationResult(BaseModel):
     @field_validator("target_language", mode="after")
     @classmethod
     def is_valid_target_language(cls, value: str) -> str:
+        """Check if the target language is valid"""
         logfire.info(f"is_valid_target_language: {value}")
         value = str(value).strip().lower()
         value = cls.migrate_language_code(value)
         # import ipdb; ipdb.set_trace()
-        if value not in valid_target_languages:
+        if value not in VALID_TARGET_LANGUAGES:
             raise ValueError(
-                f"❌ {value} is not a valid target language. Expecting: {valid_target_languages}"
+                f"❌ {value} is not a valid target language. Expecting: {VALID_TARGET_LANGUAGES}"
             )
         return value
 
@@ -112,13 +121,10 @@ class TranslationResult(BaseModel):
 class TranslationDeps:
     """Translation dependencies"""
 
-    valid_target_languages: tuple | list = valid_target_languages
+    valid_target_languages: tuple | list = VALID_TARGET_LANGUAGES
 
 
-# Update the agent to use the default model from config
-target_model = config.openai_default_model
-
-system_prompt = """
+SYSTEM_PROMPT = """
     You are a multi-lingual translator.
     * Some product names are in English, and they are not intended to be translated.
     * You remain true to the original technical meaning of the text, but your tone is nuanced for the target language.
@@ -134,11 +140,11 @@ system_prompt = """
 
 # Instantiate the Translator Agent
 agent_translator = Agent(
-    target_model,
+    TARGET_MODEL,
     result_type=TranslationResult,
     deps_type=TranslationDeps,
-    system_prompt=system_prompt,
-    retries=agent_retry_count,
+    system_prompt=SYSTEM_PROMPT,
+    retries=AGENT_RETRY_COUNT,
 )
 
 
@@ -150,7 +156,7 @@ async def validate_target_language(
     logfire.info(f"validate_target_language: {result.target_language}")
     if result.target_language not in ctx.deps.valid_target_languages:
         raise ModelRetry(
-            f"Invalid Target Language: {result.target_language}. Expected: {valid_target_languages}"
+            f"Invalid Target Language: {result.target_language}. Expected: {VALID_TARGET_LANGUAGES}"
         )
     return result
 
@@ -160,7 +166,9 @@ async def validate_fields_are_not_empty(
     ctx: RunContext[TranslationDeps], result: TranslationResult
 ) -> TranslationResult:
     """Validate that our main fields are not empty"""
-    logfire.info(f"validate_fields_are_not_empty: {result}")
+    logfire.info(f"validate_fields_are_not_empty: {result} {ctx.deps}")
+
+    # Check if any of the main fields are empty
     if "" in (
         x.strip()
         for x in (
@@ -179,7 +187,7 @@ async def validate_fields_are_not_empty(
     return result
 
 
-async def translate_text(user_prompt: str, deps: TranslationDeps) -> None:
+async def translate_text(user_prompt: str, deps: TranslationDeps) -> TranslationResult:
     """
     Asynchronously translates text using the official pydantic_ai.Agent.
     The agent sends the system prompt along with the user prompt to the LLM.
@@ -187,16 +195,16 @@ async def translate_text(user_prompt: str, deps: TranslationDeps) -> None:
         A dictionary containing the validated translation result.
     """
     tries = 0
-    while tries < agent_retry_count:
-        tries += 1
+    while tries < AGENT_RETRY_COUNT:
         try:
-            _ = await agent_translator.run(user_prompt, deps=deps)
-        except BadRequestError as e:
-            if tries <= agent_retry_count:
-                logfire.warning(f"[{tries}] Retrying due to BadRequestError: {e}")
-                continue
-            else:
+            result = await agent_translator.run(user_prompt, deps=deps)
+        except BadRequestError:
+            if tries >= AGENT_RETRY_COUNT:
                 raise
+        else:
+            tries += 1
+
+    return result
 
 
 all_agents = [agent_translator]
