@@ -13,7 +13,6 @@ import os
 from dataclasses import dataclass
 
 import logfire
-from groq import BadRequestError
 from openai import BadRequestError
 from pydantic import BaseModel, Field, field_validator
 from pydantic_ai import Agent, ModelRetry, RunContext
@@ -180,7 +179,7 @@ async def validate_fields_are_not_empty(
     return result
 
 
-async def translate_text(user_prompt: str, deps: TranslationDeps) -> TranslationResult:
+async def translate_text(user_prompt: str, deps: TranslationDeps) -> None:
     """
     Asynchronously translates text using the official pydantic_ai.Agent.
     The agent sends the system prompt along with the user prompt to the LLM.
@@ -191,16 +190,13 @@ async def translate_text(user_prompt: str, deps: TranslationDeps) -> Translation
     while tries < agent_retry_count:
         tries += 1
         try:
-            result = await agent_translator.run(user_prompt, deps=deps)
-            break
+            _ = await agent_translator.run(user_prompt, deps=deps)
         except BadRequestError as e:
             if tries <= agent_retry_count:
                 logfire.warning(f"[{tries}] Retrying due to BadRequestError: {e}")
                 continue
             else:
                 raise
-
-    return result.data
 
 
 all_agents = [agent_translator]

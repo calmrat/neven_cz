@@ -628,12 +628,3 @@ class UpgatesClient:
 
 
 # EOF
-
-
-# FIXME NOTES
-
-# check last update time...
-
-# 11459
-# 11479
-# 11462
