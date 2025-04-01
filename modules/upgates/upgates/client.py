@@ -516,20 +516,20 @@ class UpgatesClient:
             # logfire.error(msg)
             raise ValueError(msg)
 
-        source_title = cz_desc.get("title", "").strip()
-        source_long = cz_desc.get("long_description", "").strip()
+        source_title = (cz_desc.get("title") or "").strip()
+        source_long = (cz_desc.get("long_description") or "").strip()
 
-        if not source_title or not source_long:
-            logfire.error("Missing title or long description in Czech version.")
-            return None
+        # if not source_title or not source_long:
+        if not source_title:
+            raise ValueError("Missing required field: CZ-{Title}")
 
         user_prompt = f"""
         Translate requested fields to {target_lang} language based on:
         
          Product code: {product_code}
          Title: {source_title}
-         Long Description: {source_long}
         """
+        user_prompt += f"Long Description: {source_long}" if source_long else ""
 
         if prompt and prompt != "None":
             logfire.debug(f"Injecting additional user prompt text: {prompt}")

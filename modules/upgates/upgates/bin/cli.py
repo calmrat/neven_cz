@@ -200,34 +200,36 @@ def list_product_fields():
     default=False,
     help="Save the translation back to Upgates.cz API.",
 )
-@click.option(
-    "--update",
-    is_flag=True,
-    default=False,
-    help="Update the product translations before saving.",
-)
-def translate_product(product_code, target_lang, prompt, save, update):
+def translate_product(product_code, target_lang, prompt, save):
     """Translate a product's descriptions from Czech to TARGET_LANG."""
     target_lang = target_lang.lower().strip()
     prompt = " ".join(prompt) if prompt else None
     client = UpgatesClient()
 
-    try:
+    product_codes = (
+        [product_code] if "," not in product_code else product_code.split(",")
+    )
+
+    languages = [target_lang] if "," not in target_lang else target_lang.split(",")
+
+    def translate(product_code, target_lang, prompt, save) -> None:
+        """Translate product descriptions."""
         console.print(f"▶️ Translate product: {product_code}")
         asyncio.run(client.translate_product(product_code, target_lang, prompt))
-        console.print(f"✅ Translation completed: {product_code}")
-    except ValueError as e:
-        console.print(f"❌ Translation failed: {e}")
-        raise
 
-    console.print(f"🔍 Searching for product: {product_code}")
-    search_product.callback(product_code, "json", target_lang, False, list())
+        if not save:
+            return
 
-    if save:
         console.print(f"💾 Saving translation for product: {product_code}")
         # Save the translation back to Upgates.cz API but avoid updating the product again
-        save_translation.callback(product_code, target_lang, False)
-        console.print(f"✅ Translation saved for product: {product_code}")
+        asyncio.run(client.save_translation(product_code, target_lang))
+
+    _ = [
+        translate(code, lang, "", save) for code in product_codes for lang in languages
+    ]
+    console.print(
+        f"✅ Translations completed. \nLanguages: {languages}\nProduct Codes: {product_codes}"
+    )
 
 
 # CMD: Save Translation
@@ -290,7 +292,11 @@ async def save_product_translations(target_lang: str) -> None:
                 print(f"☑️ Skipped: {code}")
                 return
 
-            t1 = await client.translate_product(code, target_lang, "")
+            try:
+                t1 = await client.translate_product(code, target_lang, "")
+            except AttributeError:
+                print(f"❌ Translation failed: {code}")
+                return
             t2 = tg.create_task(client.save_translation(code, target_lang))
 
     for chunk in chunks:

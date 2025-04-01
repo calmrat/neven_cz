@@ -421,7 +421,6 @@ class UpgatesDuckDBAPI:
             logfire.debug(
                 f"❌ Failed to insert description for product {product_id}: {e}"
             )
-            # import ipdb; ipdb.set_trace()
 
     def insert_product_price(self, product_id, currency, price_with_vat):
         """Insert price data into the prices table."""
@@ -447,50 +446,44 @@ class UpgatesDuckDBAPI:
         self, product_id, category_id, category_code, category_name, main_yn, position
     ):
         """Insert category data into the categories table, skipping duplicates."""
-        try:
-            # Check if the category_id already exists
-            existing_category = self.conn.execute(
+        # Check if the category_id already exists
+        existing_category = self.conn.execute(
+            """
+            SELECT 1 FROM categories WHERE category_id = ? and product_id = ?
+        """,
+            (category_id, product_id),
+        ).fetchone()
+        # print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
+
+        # import ipdb
+
+        # ipdb.set_trace()
+
+        # something here is wrong
+        # we inserting duplicates
+
+        if existing_category:
+            logfire.debug(
+                f"⚠️ Category with ID {category_id} already exists. Skipping insert."
+            )
+            return
+        else:
+            # Insert category if it doesn't exist
+            self.conn.execute(
                 """
-                SELECT 1 FROM categories WHERE category_id = ? and product_id = ?
+                INSERT INTO categories (product_id, category_id, category_code, category_name, main_yn, position)
+                VALUES (?, ?, ?, ?, ?, ?)
             """,
-                (category_id, product_id),
-            ).fetchone()
-            # print (f"Existing category: {existing_category}; category_id: {category_id}; product_id: {product_id}")
-
-            import ipdb
-
-            ipdb.set_trace()
-
-            # something here is wrong
-            # we inserting duplicates
-
-            if existing_category:
-                logfire.debug(
-                    f"⚠️ Category with ID {category_id} already exists. Skipping insert."
-                )
-                return
-            else:
-                # Insert category if it doesn't exist
-                self.conn.execute(
-                    """
-                    INSERT INTO categories (product_id, category_id, category_code, category_name, main_yn, position)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        product_id,
-                        category_id,
-                        category_code,
-                        category_name,
-                        main_yn,
-                        position,
-                    ),
-                )
-                logfire.debug(
-                    f"✅ Category with ID {category_id} inserted successfully."
-                )
-
-        except Exception as e:
-            logfire.error(f"❌ Failed to insert category {category_id}: {e}")
+                (
+                    product_id,
+                    category_id,
+                    category_code,
+                    category_name,
+                    main_yn,
+                    position,
+                ),
+            )
+            logfire.debug(f"✅ Category with ID {category_id} inserted successfully.")
 
     def insert_product_meta(self, product_id, meta_key, meta_type, meta_value):
         """Insert metadata into the metas table."""
@@ -672,8 +665,6 @@ class UpgatesDuckDBAPI:
             parameters.append(product_id)
 
         result = self.conn.execute(query, parameters).fetchdf()
-
-        # import ipdb; ipdb.set_trace()
 
         return result
 
