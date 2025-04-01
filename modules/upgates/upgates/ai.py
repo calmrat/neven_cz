@@ -13,6 +13,8 @@ import os
 from dataclasses import dataclass
 
 import logfire
+from groq import BadRequestError
+from openai import BadRequestError
 from pydantic import BaseModel, Field, field_validator
 from pydantic_ai import Agent, ModelRetry, RunContext
 
@@ -22,7 +24,7 @@ from upgates import config
 if config.openai_enabled:
     # Ensure OpenAI API key is loaded in environment
     os.environ["OPENAI_API_KEY"] = config.openai_api_key
-    agent_retry_count: int = int(config.openai_default_retries) or 1
+    agent_retry_count: int = int(config.openai_default_retries) or 3
 else:
     raise NotImplementedError("OpenAI API key is required for translation.")
 
@@ -185,7 +187,19 @@ async def translate_text(user_prompt: str, deps: TranslationDeps) -> Translation
     Returns:
         A dictionary containing the validated translation result.
     """
-    result = await agent_translator.run(user_prompt, deps=deps)
+    tries = 0
+    while tries < agent_retry_count:
+        tries += 1
+        try:
+            result = await agent_translator.run(user_prompt, deps=deps)
+            break
+        except BadRequestError as e:
+            if tries <= agent_retry_count:
+                logfire.warning(f"[{tries}] Retrying due to BadRequestError: {e}")
+                continue
+            else:
+                raise
+
     return result.data
 
 
