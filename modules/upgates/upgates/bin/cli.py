@@ -35,7 +35,6 @@ import sys
 
 import click
 import duckdb
-import ipdb
 import IPython
 import yaml
 from rich.console import Console
@@ -441,7 +440,7 @@ def clear_cache():
         try:
             os.remove(db_file)
             console.print("✅ Database cache file cleared successfully.")
-        except Exception as e:
+        except RuntimeError as e:
             console.print(f"❌ Failed to clear cache file: {e}")
     else:
         console.print("⚠️ Cache file does not exist.")
