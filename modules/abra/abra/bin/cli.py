@@ -29,17 +29,15 @@ Example:
     $> abra --help
 """
 
+import logging
 import os
-import click
-from rich.console import Console
-import IPython
-
 from pathlib import Path
 
+import click
+import IPython
 from abra import config
 from abra.handlers import InvoiceHandler
-
-import logging
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +47,7 @@ console = Console()
 sample_input_filename = "abra/faktura_vydana-sample-1.xml"
 sample_input_path = config.input_path / sample_input_filename
 
+
 if not sample_input_path.exists():
     logger.error("Sample XML file not found.")
     logger.debug(f"Expected path: {sample_input_path}")
@@ -56,21 +55,32 @@ if not sample_input_path.exists():
 
 logger.info("abra - Fully Nested Invoice Import to DuckDB")
 
+
 # CLI entrypoint
 @click.group()
 def cli():
     "Abra Invoice Importer"
     pass
 
+
 # Import invoices command
 @click.command()
 @click.option("--reset", is_flag=True, help="Reset the database")
-@click.option("db_path", "--db-path", default=config.default_db_path, help="Database path")
+@click.option(
+    "db_path", "--db-path", default=config.default_db_path, help="Database path"
+)
 def init_db(reset, db_path):
     "Initialize the DuckDB database for invoices"
     client = InvoiceHandler(db_path)
-    
-    if client.conn.execute("SELECT * FROM information_schema.tables WHERE table_name = 'invoices'").fetchone() or client.conn.execute("SELECT * FROM information_schema.tables WHERE table_name = 'invoice_items'").fetchone():
+
+    if (
+        client.conn.execute(
+            "SELECT * FROM information_schema.tables WHERE table_name = 'invoices'"
+        ).fetchone()
+        or client.conn.execute(
+            "SELECT * FROM information_schema.tables WHERE table_name = 'invoice_items'"
+        ).fetchone()
+    ):
         if reset:
             client.conn.execute("DROP TABLE IF EXISTS invoices")
             client.conn.execute("DROP TABLE IF EXISTS invoice_items")
@@ -83,24 +93,26 @@ def init_db(reset, db_path):
     client.init_tables()
     logger.debug("Database initialized successfully")
 
+
 # Import invoices command
 @click.command()
-@click.option("db_path", "--db-path", default=config.default_db_path, help="Database path")
+@click.option(
+    "db_path", "--db-path", default=config.default_db_path, help="Database path"
+)
 @click.option("--reset", is_flag=True, help="Reset the database")
 @click.option("--migrate", is_flag=True, help="Migrate invoices to Pohoda format")
 @click.option("--embed", is_flag=True, help="Embed IPython shell after import")
-@click.argument(
-    "input-xml-path",
-    default=sample_input_path
-)
-def import_invoices(db_path: Path, reset: bool, migrate: bool, embed: bool, input_xml_path: Path):
+@click.argument("input-xml-path", default=sample_input_path)
+def import_invoices(
+    db_path: Path, reset: bool, migrate: bool, embed: bool, input_xml_path: Path
+):
     "Import invoices from a single XML to DuckDB"
-    # TODO: rename to import_invoices, as it imports multiple invoices 
+    # TODO: rename to import_invoices, as it imports multiple invoices
     input_xml_path = os.path.abspath(input_xml_path)
 
     if reset:
         init_db.callback(reset=True, db_path=db_path)
-    
+
     logger.info("Starting import process...")
     logger.debug(f"Database path: {db_path}")
     logger.debug(f"Input XML: {input_xml_path}")
@@ -123,27 +135,32 @@ def import_invoices(db_path: Path, reset: bool, migrate: bool, embed: bool, inpu
         logger.debug("Invoices migrated to Pohoda format.")
 
     if embed:
-        import ipdb; ipdb.set_trace()
+        import ipdb
+
+        ipdb.set_trace()
+
 
 # Search invoices command
 @click.command()
-@click.option("db_path", "--db-path", default=config.default_db_path, help="Database path")
+@click.option(
+    "db_path", "--db-path", default=config.default_db_path, help="Database path"
+)
 @click.option("--embed", is_flag=True, help="Embed IPython shell after search")
-@click.option('--last', is_flag=True, help="Display only the first 1 invoices")
+@click.option("--last", is_flag=True, help="Display only the first 1 invoices")
 def search_invoices(db_path: str, embed: bool, last: bool):
     "Search invoices in the DuckDB database"
     client = InvoiceHandler(db_path)
     invoices = client.load_invoices()
-    
+
     if not invoices:
         logger.error("No invoices found.")
         return
 
     logger.info("Invoices found:")
-    
+
     start_idx = -2 if last else 0
     end_idx = -1
-    
+
     if embed:
         IPython.embed()
     else:
@@ -162,7 +179,7 @@ def migrate_invoices(db_path: str, embed: bool, output_filename: str):
     client = InvoiceHandler(db_path=db_path)
     client.migrate_invoices()
     client.save_migrated_invoices(output_filename)
-    
+
     if embed:
         IPython.embed()
 
